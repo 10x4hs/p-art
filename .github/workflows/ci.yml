@@ -1,0 +1,18 @@
+# PR을 올리거나 main/dev에 push하면 자동으로 문법 검사 + 동작 테스트를 돌린다.
+name: CI
+on:
+  pull_request:
+  push:
+    branches: [main, dev]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+      - run: npm test

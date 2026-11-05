@@ -1,0 +1,22 @@
+{
+  "name": "part",
+  "version": "1.0.0",
+  "description": "PART — 학생 프로젝트 전시 서비스",
+  "main": "backend/server.js",
+  "scripts": {
+    "start": "node backend/server.js",
+    "dev": "node --watch backend/server.js",
+    "check": "node --check backend/server.js && node --check backend/db.js && node --check backend/config.js && node --check backend/routes/auth.js && node --check backend/routes/projects.js && node --check frontend/js/app.js && node --check shared/categories.js",
+    "test": "node scripts/smoke-test.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "better-sqlite3": "^13.0.3",
+    "express": "^5.3.0",
+    "express-session": "^1.19.0",
+    "multer": "^2.5.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
