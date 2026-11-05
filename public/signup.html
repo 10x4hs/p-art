@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>가입 · PART</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600;700&family=Noto+Sans+KR:wght@300;400;500;600;700&display=swap">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div class="auth-page">
+<img src="/img/hero.jpg" alt="">
+<div class="veil"></div>
+<header><a class="auth-logo" href="/" aria-label="PART 처음으로"><span class="p">P</span><span class="art">ART</span></a></header>
+<main>
+<h1 class="vh">가입</h1>
+<div id="step" style="width:100%;display:flex;flex-direction:column;align-items:center;gap:18px"></div>
+</main>
+<footer><span>이미 가입했나요?</span><span aria-hidden="true">·</span><a href="/login.html">로그인</a></footer>
+</div>
+<script src="/js/app.js"></script>
+<script>
+const flow = stepForm([
+  { ph: '이메일', type: 'email', auto: 'email', mode: 'email', check: (v) => { if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim())) throw new Error('이메일 주소를 확인해 주세요'); } },
+  { ph: '비밀번호 (8자 이상, 영문+숫자)', type: 'password', auto: 'new-password', check: (v) => { if (!/^(?=.*[A-Za-z])(?=.*\d).{8,}$/.test(v)) throw new Error('비밀번호는 8자 이상, 영문과 숫자를 섞어 주세요'); } },
+  { ph: '닉네임 (나중에 바꿀 수 있어요)', auto: 'nickname', check: (v) => { const n = v.trim().length; if (n < 2 || n > 20) throw new Error('닉네임은 2~20자로 써 주세요'); } },
+], async ([email, password, nickname]) => {
+  try {
+    await api('/api/signup', 'POST', { email: email.trim(), password, nickname: nickname.trim() });
+    $('#step').innerHTML = `<div class="auth-done"><p class="t">가입 완료</p><p class="s">${esc(nickname.trim())} 님, 이제 작품을 걸 수 있어요.</p><a href="/edit.html">내 작품 걸기 <span aria-hidden="true">→</span></a></div>`;
+    $('.auth-done a').focus();
+  } catch (err) { flow.goTo(err.status === 409 ? 0 : 2, err.message); }
+}, { counter: true });
+</script>
+</body>
+</html>

@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>작품 · PART</title>
+<script>try{if(localStorage.getItem('theme')==='light')document.documentElement.classList.add('light')}catch(e){}</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600;700&family=Noto+Sans+KR:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400&display=swap">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body class="sr">
+<div id="nav"></div>
+<main id="main"></main>
+<div id="foot"></div>
+
+<script src="/js/app.js"></script>
+<script>
+const id = param('id');
+$('#foot').outerHTML = FOOTER;
+
+function para(text, fallback) {
+  return text ? esc(text).replace(/\n/g, '<br>') : `<span style="color:var(--dim)">${fallback}</span>`;
+}
+
+async function load() {
+  const p = await api('/api/projects/' + id).catch(() => null);
+  if (!p) {
+    $('#main').innerHTML = `<div class="wrap page-top"><div class="empty glass"><p>없거나 비공개인 작품이에요.</p><a class="btn btn-hot" href="/">전시관으로</a></div></div>`;
+    return;
+  }
+  document.title = p.title + ' · PART';
+  const others = (await api('/api/projects?sort=hot')).filter((o) => o.id !== p.id && o.is_public).slice(0, 3);
+
+  $('#main').innerHTML = `
+  <header class="d-hero">
+    <div class="hero-bg"><img src="${esc(imgOf(p))}" alt=""></div>
+    <div class="hero-shade"></div>
+    <div class="wrap" style="width:100%;padding-bottom:56px">
+      <div class="d-panel glass">
+        <a class="nav-link" href="/works.html" style="align-self:flex-start;padding-left:0">← 전시관</a>
+        <p class="mono">${esc(p.cats.join(' · ') || '작품')}${p.is_public ? '' : ' · 비공개'}</p>
+        <h1>${esc(p.title)}</h1>
+        <p style="font-size:16px;font-weight:300;color:var(--ink)">${esc(p.summary)}</p>
+        <p class="mono">by ${esc(makerOf(p))}</p>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <a class="btn btn-hot" href="${esc(p.url)}" target="_blank" rel="noopener">바로 해 보기 <span class="arr" aria-hidden="true">↗</span></a>
+          ${upBtn(p, true)}
+          <button class="btn" type="button" id="share">주소 복사</button>
+        </div>
+        ${p.mine ? `<div class="owner">
+          <a class="btn" href="/kit.html?id=${p.id}">홍보 키트</a>
+          <a class="btn" href="/edit.html?id=${p.id}">고치기</a>
+          <button class="btn btn-danger" type="button" id="del">내리기</button></div>` : ''}
+      </div>
+    </div>
+  </header>
+
+  <div class="wrap sec d-grid">
+    <div>
+      <section class="d-sec"><h2 class="mono">Story · 만든 이야기</h2><p class="quote">${para(p.detail, '아직 쓰지 않았어요.')}</p></section>
+      <section class="d-sec"><h2 class="mono">For · 이런 친구한테 추천</h2><p class="quote" style="color:var(--mute)">${esc(p.target || '누구나')}</p></section>
+      ${p.images.length > 1 ? `<section class="d-sec"><h2 class="mono">Screens · 화면</h2><div class="shots">${p.images.map((s) => `<a href="${esc(s)}" target="_blank" rel="noopener"><img src="${esc(s)}" alt="${esc(p.title)} 화면" loading="lazy"></a>`).join('')}</div></section>` : ''}
+      <section class="d-sec" aria-labelledby="g-t">
+        <h2 class="mono" id="g-t">Guestbook · 방명록 <span id="gcount">${p.comments}</span></h2>
+        <form class="gform" id="gform">
+          <label class="vh" for="gname">이름</label>
+          <input class="field-in g-name" id="gname" maxlength="12" placeholder="이름 (선택)">
+          <label class="vh" for="gtext">한 줄 감상</label>
+          <input class="field-in" id="gtext" maxlength="80" placeholder="써 본 느낌을 한 줄로 남겨 주세요" required>
+          <button class="btn btn-hot" type="submit">남기기</button>
+        </form>
+        <ul class="glist" id="glist"></ul>
+      </section>
+    </div>
+    <aside class="side glass" aria-label="작품 정보">
+      <div class="row"><span>응원</span><span><span data-cheers="${p.id}">${p.likes}</span>개</span></div>
+      <div class="row"><span>분야</span><span>${esc(p.cats.join(', ') || '—')}</span></div>
+      <div class="row"><span>만든 사람</span><span>${esc(makerOf(p))}</span></div>
+      <div class="row"><span>올린 사람</span><span><a href="/profile.html?id=${p.user_id}">${esc(p.author)}</a></span></div>
+      ${p.github ? `<div class="row"><span>코드</span><span><a href="${esc(p.github)}" target="_blank" rel="noopener">GitHub ↗</a></span></div>` : ''}
+      ${p.tags.length ? `<div class="tech" aria-label="기술">${p.tags.map((t) => `<span>${esc(t)}</span>`).join('')}</div>` : ''}
+      <p style="color:var(--dim);font-size:13px">친구한테 보낼 땐 링크보다 이 페이지 주소가 더 잘 눌려요.</p>
+    </aside>
+  </div>
+
+  ${others.length ? `<section class="wrap" style="padding-bottom:110px" aria-labelledby="o-t">
+    <h2 class="mono" id="o-t" style="margin-bottom:20px">Also on view · 이 작품도 걸려 있어요</h2>
+    <div class="others">${others.map((o) => `<a class="mini" href="/project.html?id=${o.id}" style="text-decoration:none;display:block"><img src="${esc(imgOf(o))}" alt="" loading="lazy"><div><b style="font-weight:500">${esc(o.title)}</b><span>▲ ${o.likes}</span></div></a>`).join('')}</div>
+  </section>` : '<div style="height:80px"></div>'}`;
+
+  $('#share').onclick = () => copyText(pageUrl(p.id), '작품 주소를 복사했어요');
+  $('#del')?.addEventListener('click', async () => {
+    if (!confirm('작품을 내릴까요? 사진과 감상도 함께 지워져요.')) return;
+    await api('/api/projects/' + p.id, 'DELETE');
+    location.href = '/profile.html?id=' + p.user_id;
+  });
+  $('#gform').onsubmit = async (e) => {
+    e.preventDefault();
+    try {
+      await api(`/api/projects/${p.id}/comments`, 'POST', { name: $('#gname').value, text: $('#gtext').value });
+      $('#gtext').value = '';
+      toast('감상을 남겼어요');
+      guests();
+    } catch (err) { toast(err.message); }
+  };
+  guests();
+}
+
+// 방명록 목록. 작품 주인에게만 지우기 버튼이 보인다
+async function guests() {
+  const rows = await api(`/api/projects/${id}/comments`);
+  $('#gcount').textContent = rows.length;
+  $('#glist').innerHTML = rows.length ? rows.map((g) => `<li class="glass"><span class="av" aria-hidden="true"></span>
+      <span class="g-txt">${esc(g.text)}</span><span class="g-who">${esc(g.name)}</span>
+      ${g.canDelete ? `<button class="g-del" type="button" data-del="${g.id}" aria-label="이 감상 지우기">지우기</button>` : ''}</li>`).join('')
+    : '<p style="color:var(--dim);margin-top:14px">아직 감상이 없어요. 첫 번째로 남겨 주세요.</p>';
+}
+$('#main').addEventListener('click', async (e) => {
+  const b = e.target.closest('[data-del]');
+  if (!b || !confirm('이 감상을 지울까요?')) return;
+  await api(`/api/projects/${id}/comments/${b.dataset.del}`, 'DELETE').catch((err) => toast(err.message));
+  guests();
+});
+
+nav(); load();
+</script>
+</body>
+</html>

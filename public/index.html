@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PART · 학생 작품 전시관</title>
+<script>try{if(localStorage.getItem('theme')==='light')document.documentElement.classList.add('light')}catch(e){}</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600;700&family=Noto+Sans+KR:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400&family=Playfair+Display:wght@600;700&display=swap">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body class="sr">
+<div id="nav"></div>
+
+<header class="hero">
+  <div class="stage" aria-hidden="true"><img class="stage-photo" src="/img/hero.jpg" alt=""><i></i></div>
+  <div class="hero-shade"></div>
+  <div class="hud-c hud-tr" data-c="Project + Art" aria-hidden="true"></div>
+  <div class="hud-c hud-br" data-c="Scroll ↓" aria-hidden="true"></div>
+  <div class="tick-ln" aria-hidden="true"></div>
+  <div class="wrap hero-in">
+    <div>
+      <p class="mono hud"><i></i>Project + Art · 지금 <span id="total">0</span>개 작품 전시 중</p>
+      <h1 class="h1 h1-part" style="font-family:'Playfair Display',serif"><span class="word"><span class="p">P</span><span class="art">ART</span></span><sup class="part-sup" aria-label="Project 더하기 Art">Project <i>+</i> <em>Art</em></sup></h1>
+      <p class="lede">수행평가로 만든 그 페이지, 링크 말고 작품으로 걸어 보세요.</p>
+      <div class="hero-cta">
+        <a class="btn btn-hot" href="#works">전시 둘러보기 <span class="arr" aria-hidden="true">→</span></a>
+        <a class="btn" href="/edit.html">내 작품 걸기</a>
+      </div>
+    </div>
+    <div class="stack" id="stack" aria-hidden="true"></div>
+  </div>
+</header>
+
+<section class="wrap hide" id="featSec" aria-labelledby="feat-t" style="position:relative;z-index:1;padding-top:120px">
+  <div class="sec-head"><div><p class="mono">This week</p><h2 class="h2">이번 주의 <b>작품</b></h2></div></div>
+  <article class="feat" id="feat"></article>
+</section>
+
+<section class="sec wrap" id="works" aria-labelledby="works-t">
+  <div class="sec-head">
+    <div><p class="mono">Exhibition</p><h2 class="h2" id="works-t">지금 걸려 있는 <b>작품</b></h2></div>
+    <div class="tools">
+      <label class="search glass"><span class="vh">작품 찾기</span><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="9" cy="9" r="6"></circle><path d="M14 14 L18 18"></path></svg><input type="search" id="q" placeholder="작품, 만든 사람 찾기"></label>
+      <div class="seg glass" role="group" aria-label="정렬">
+        <button type="button" data-sort="hot" aria-pressed="true">인기순</button><button type="button" data-sort="new" aria-pressed="false">최신순</button>
+      </div>
+    </div>
+  </div>
+  <div class="chips" role="group" aria-label="분야" id="chips"></div>
+  <p class="vh" aria-live="polite" id="count"></p>
+  <div class="grid" id="grid"></div>
+  <div style="display:flex;justify-content:center;margin-top:34px"><a class="btn" id="more" href="/works.html">전체 작품 보기 <span class="arr" aria-hidden="true">→</span></a></div>
+</section>
+
+<section class="sec wrap" id="how" aria-labelledby="how-t" style="padding-top:0">
+  <div class="sec-head"><div><p class="mono">How it works</p><h2 class="h2" id="how-t">세 단계면 <b>끝.</b></h2></div></div>
+  <ol class="steps">
+    <li class="step glass"><div class="step-img"><img src="/img/step1.jpg" alt="노트북으로 작업하는 모습" loading="lazy"></div><h3><span class="mono">01</span>걸기</h3><p>작품 이름, 한 줄 소개, 체험 주소만 넣으면 카드가 만들어져요.</p></li>
+    <li class="step glass"><div class="step-img"><img src="/img/step2.jpg" alt="노트에 화면을 스케치한 모습" loading="lazy"></div><h3><span class="mono">02</span>알리기</h3><p>PART가 써 준 홍보 문구를 복사해서 단톡방에 올려요.</p></li>
+    <li class="step glass"><div class="step-img"><img src="/img/step3.jpg" alt="친구들이 함께 이야기하는 모습" loading="lazy"></div><h3><span class="mono">03</span>응원받기</h3><p>친구들이 써 보고 ▲ 응원과 한 줄 감상을 남겨요.</p></li>
+  </ol>
+</section>
+
+<section class="wrap" style="padding-bottom:40px">
+  <div class="cta">
+    <div class="stage" aria-hidden="true"><i></i></div>
+    <div class="cta-glass glass"></div>
+    <p class="mono">Your turn</p>
+    <h2 style="margin-top:16px">다음 전시는 네 차례.</h2>
+    <p>수행평가로 만든 그 페이지, 이제 링크 말고 작품으로 보여 주세요.</p>
+    <a class="btn btn-hot" href="/edit.html">내 작품 걸기 <span class="arr" aria-hidden="true">→</span></a>
+  </div>
+</section>
+<div id="foot"></div>
+
+<script src="/js/app.js"></script>
+<script>
+const state = { q: '', sort: 'hot', cat: '' };
+const HOME_LIMIT = 6;
+$('#foot').outerHTML = FOOTER;
+
+// 히어로의 떠 있는 카드 3장 + 이번 주의 작품 (응원 많은 순)
+async function loadTop() {
+  const all = await api('/api/projects?sort=hot');
+  const pub = all.filter((p) => p.is_public);
+  $('#total').textContent = pub.length;
+  $('#stack').innerHTML = pub.slice(0, 3).map((p, i) =>
+    `<div class="float glass f${i}"><span class="float-no">No.0${i + 1}</span><img src="${esc(imgOf(p))}" alt=""><div class="float-cap">${esc(p.title)}<span>▲ <span data-cheers="${p.id}">${p.likes}</span></span></div></div>`).join('');
+  const pick = pub[0];
+  $('#featSec').classList.toggle('hide', !pick);
+  if (!pick) return;
+  $('#feat').innerHTML = `
+    <a class="feat-img" href="/project.html?id=${pick.id}" aria-label="${esc(pick.title)} 작품 보기"><img src="${esc(imgOf(pick))}" alt="${esc(pick.title)} 대표 사진"></a>
+    <div class="feat-panel glass">
+      <p class="mono">▲ <span data-cheers="${pick.id}">${pick.likes}</span> · 응원 1등</p>
+      <h3 id="feat-t">${esc(pick.title)}</h3>
+      <p>${esc(pick.summary)} — ${esc(makerOf(pick))}</p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <a class="btn btn-hot" href="${esc(pick.url)}" target="_blank" rel="noopener">바로 해 보기 <span class="arr" aria-hidden="true">↗</span></a>
+        <a class="btn" href="/project.html?id=${pick.id}">작품 이야기</a>
+      </div>
+    </div>`;
+}
+
+// 분야 칩
+function chips() {
+  $('#chips').innerHTML = ['', ...CATS].map((c) =>
+    `<button type="button" class="chip" data-cat="${c}" aria-pressed="${state.cat === c}">${c || '전체'}</button>`).join('');
+}
+
+async function list() {
+  const qs = new URLSearchParams({ q: state.q, sort: state.sort, cat: state.cat });
+  const all = (await api('/api/projects?' + qs)).filter((p) => p.is_public);
+  const rows = all.slice(0, HOME_LIMIT);                       // 홈에는 6개까지만
+  $('#count').textContent = `작품 ${all.length}개`;
+  $('#more').href = '/works.html?' + qs;                         // 지금 고른 검색·분야·정렬을 그대로 들고 간다
+  $('#more').innerHTML = `전체 작품 보기${all.length > HOME_LIMIT ? ` (${all.length}개)` : ''} <span class="arr" aria-hidden="true">→</span>`;
+  $('#grid').innerHTML = rows.length ? rows.map(card).join('') :
+    `<div class="empty glass"><p>${state.q || state.cat ? '찾는 작품이 아직 없어요.' : '아직 걸린 작품이 없어요.'}</p><a class="btn btn-hot" href="/edit.html">첫 번째로 걸어 보기</a></div>`;
+}
+
+$('#chips').onclick = (e) => { const b = e.target.closest('[data-cat]'); if (!b) return; state.cat = b.dataset.cat; chips(); list(); };
+$$('[data-sort]').forEach((b) => (b.onclick = () => {
+  state.sort = b.dataset.sort;
+  $$('[data-sort]').forEach((x) => x.setAttribute('aria-pressed', x === b));
+  list();
+}));
+let qt;
+$('#q').oninput = (e) => { clearTimeout(qt); qt = setTimeout(() => { state.q = e.target.value.trim(); list(); }, 250); };
+
+nav(); chips(); loadTop(); list();
+</script>
+</body>
+</html>

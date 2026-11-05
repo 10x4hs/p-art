@@ -1,0 +1,16 @@
+{
+  "name": "part",
+  "version": "1.0.0",
+  "description": "PART — 학생 프로젝트 전시 서비스",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "better-sqlite3": "^13.0.3",
+    "express": "^5.3.0",
+    "express-session": "^1.19.0",
+    "multer": "^2.5.0"
+  }
+}
