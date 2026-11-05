@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>작품 걸기 · PART</title>
+<script>try{if(localStorage.getItem('theme')==='light')document.documentElement.classList.add('light')}catch(e){}</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600;700&family=Noto+Sans+KR:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400&display=swap">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body class="sr">
+<div id="nav"></div>
+
+<div class="wrap reg" style="padding-bottom:110px">
+  <div>
+    <a class="nav-link" href="/works.html" style="padding-left:0">← 전시관</a>
+    <p class="mono" style="margin-top:20px" id="kicker">New exhibit</p>
+    <h1 class="h2" style="font-size:clamp(28px,3.2cqi,42px)" id="head">내 작품을 <b>걸어 볼까요?</b></h1>
+    <p style="color:var(--mute);font-weight:300;margin:16px 0 36px">1분이면 끝나요. 오른쪽 카드가 입력하는 대로 바뀌어요.</p>
+
+    <form class="form" id="form" novalidate>
+      <label class="drop"><input type="file" name="images" accept="image/jpeg,image/png,image/webp" multiple><b>대표 사진 올리기</b><span id="photoHint">jpg·png·webp, 5장까지. 첫 장이 대표 사진이에요</span></label>
+      <div class="f"><label for="f-title">작품 이름 <span class="req">필수</span></label><input class="field-in" id="f-title" name="title" maxlength="40" placeholder="예: 급식 레이더"></div>
+      <div class="f"><label for="f-sum">한 줄 소개 <span class="req">필수</span></label><input class="field-in" id="f-sum" name="summary" maxlength="100" placeholder="무엇을 하는 작품인지 한 문장으로"></div>
+      <div class="f"><label for="f-maker">만든 사람 <span class="req">필수</span></label><input class="field-in" id="f-maker" name="maker" maxlength="30" placeholder="예: 1학년 4반 홍길동"></div>
+      <div class="f"><label for="f-demo">체험 주소 <span class="req">필수</span></label><input class="field-in" id="f-demo" name="url" type="text" inputmode="url" placeholder="https://"></div>
+      <div class="f"><label for="f-target">이런 친구한테 추천</label><input class="field-in" id="f-target" name="target" maxlength="50" placeholder="예: 아침마다 급식표 찾는 친구"></div>
+      <div class="f"><label for="f-story">만든 이야기</label><textarea class="field-in" id="f-story" name="detail" maxlength="2000" placeholder="왜 만들었는지, 어떻게 쓰는지"></textarea></div>
+      <fieldset class="f tagbox" id="cats"><legend>분야</legend></fieldset>
+      <div class="f"><label for="f-tags">쓴 기술 (쉼표로 구분)</label><input class="field-in" id="f-tags" name="tags" placeholder="예: HTML, CSS, JavaScript"></div>
+      <div class="f"><label for="f-gh">GitHub 주소</label><input class="field-in" id="f-gh" name="github" type="text" inputmode="url" placeholder="https://github.com/"></div>
+      <div class="f"><label class="check"><input type="checkbox" id="pub" checked> 전시관에 공개하기</label></div>
+      <p class="form-msg" id="err" role="status"></p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn btn-hot" type="submit" id="submit">전시 시작하기 <span class="arr" aria-hidden="true">→</span></button>
+        <button class="btn" type="button" id="fill">예시로 채우기</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="prev">
+    <p class="mono">Preview · 미리보기</p>
+    <article class="card">
+      <div class="card-img"><img id="pvImg" src="/img/hero.jpg" alt="미리보기 사진"></div>
+      <div class="card-top"><span class="pill glass mono" id="pvTag">작품</span><span class="pill glass mono" style="color:var(--ink)">New</span></div>
+      <div class="card-bar glass">
+        <div class="card-t"><h3 id="pvTitle">작품 이름</h3><p id="pvSum">한 줄 소개가 여기에 보여요</p><p class="mono">▶ 바로 해 보기 · <span id="pvMaker">만든 사람</span></p></div>
+        <span class="up" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M8 2.5 L14.5 11.5 H1.5 Z"></path></svg><b>0</b></span>
+      </div>
+    </article>
+  </div>
+</div>
+<div id="foot"></div>
+
+<script src="/shared/categories.js"></script>
+<script src="/js/app.js"></script>
+<script>
+const id = param('id'), form = $('#form');
+const picked = new Set();
+let oldImg = null, blobUrl = null;
+$('#foot').outerHTML = FOOTER;
+
+function drawCats() {
+  $('#cats').innerHTML = '<legend>분야</legend>' + CATS.map((c) =>
+    `<button type="button" class="chip" data-cat="${c}" aria-pressed="${picked.has(c)}">${c}</button>`).join('');
+}
+$('#cats').onclick = (e) => {
+  const b = e.target.closest('[data-cat]'); if (!b) return;
+  picked.has(b.dataset.cat) ? picked.delete(b.dataset.cat) : picked.add(b.dataset.cat);
+  drawCats(); preview();
+};
+
+// 입력하는 대로 미리보기 카드를 바꾼다
+function preview() {
+  $('#pvTitle').textContent = form.title.value.trim() || '작품 이름';
+  $('#pvSum').textContent = form.summary.value.trim() || '한 줄 소개가 여기에 보여요';
+  $('#pvMaker').textContent = form.maker.value.trim() || '만든 사람';
+  $('#pvTag').textContent = [...picked][0] || '작품';
+}
+form.addEventListener('input', preview);
+
+form.images.onchange = () => {
+  const files = [...form.images.files];
+  if (blobUrl) URL.revokeObjectURL(blobUrl);
+  blobUrl = files[0] ? URL.createObjectURL(files[0]) : null;
+  $('#pvImg').src = blobUrl || oldImg || FALLBACK_IMG;
+  $('#photoHint').textContent = files.length
+    ? `${files.length}장 골랐어요${files.length > 5 ? ' — 5장까지만 올릴 수 있어요' : ''}${id ? ' (저장하면 기존 사진이 바뀌어요)' : ''}`
+    : 'jpg·png·webp, 5장까지. 첫 장이 대표 사진이에요';
+};
+
+$('#fill').onclick = () => {
+  form.title.value = 'PART';
+  form.summary.value = '프로젝트를 작품처럼 거는 학생 전시관';
+  form.maker.value = form.maker.value || '1학년 4반 홍길동';
+  form.url.value = 'https://example.com/part';
+  form.target.value = '작품을 만들었는데 보여 줄 데가 없는 친구';
+  form.detail.value = '친구가 보낸 작품 링크를 열어 보지 않게 되는 게 아쉬워서, 카드처럼 걸어 두는 전시관을 만들었어요.';
+  form.tags.value = 'HTML, CSS, JavaScript';
+  picked.clear(); picked.add('웹사이트'); picked.add('학교생활');
+  drawCats(); preview();
+};
+
+// 칸 하나에 빨간 테두리 + 메시지
+function bad(input, msg) {
+  $$('.bad', form).forEach((el) => el.classList.remove('bad'));
+  if (input) { input.classList.add('bad'); input.focus(); }
+  $('#err').textContent = msg ? '⚠ ' + msg : '';
+}
+// 사진을 올리기 전에 브라우저에서 줄인다 (긴 쪽 1600px, JPEG).
+// 저장 공간(Cloudflare KV)을 아끼고, 휴대폰 사진(5~10MB)도 빨리 올라가게
+async function shrink(file, max = 1600) {
+  const img = await createImageBitmap(file);
+  const scale = Math.min(1, max / Math.max(img.width, img.height));
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.round(img.width * scale);
+  canvas.height = Math.round(img.height * scale);
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#fff';                       // 투명한 PNG는 흰 배경으로
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+  return new Promise((ok, fail) => canvas.toBlob((b) => (b ? ok(b) : fail(new Error('shrink'))), 'image/jpeg', 0.82));
+}
+const isHttp = (u) => /^https?:\/\/\S+$/.test(u);
+
+form.onsubmit = async (e) => {
+  e.preventDefault();
+  if (!form.title.value.trim()) return bad(form.title, '작품 이름을 적어 주세요.');
+  if (!form.summary.value.trim()) return bad(form.summary, '한 줄 소개를 적어 주세요.');
+  if (!form.maker.value.trim()) return bad(form.maker, '만든 사람을 적어 주세요.');
+  if (!isHttp(form.url.value.trim())) return bad(form.url, 'http:// 나 https:// 로 시작하는 주소를 넣어 주세요.');
+  if (form.github.value.trim() && !isHttp(form.github.value.trim())) return bad(form.github, 'GitHub 주소는 https:// 로 시작해야 해요.');
+  if (form.images.files.length > 5) return bad(null, '사진은 5장까지예요.');
+  bad(null, '');
+
+  const data = new FormData(form);
+  data.delete('images');
+  $('#submit').disabled = true;
+  $('#err').textContent = form.images.files.length ? '사진을 줄이는 중…' : '';
+  try {
+    for (const f of form.images.files) data.append('images', await shrink(f), 'photo.jpg');
+  } catch { $('#submit').disabled = false; return bad(null, '사진을 읽지 못했어요. 다른 사진을 골라 주세요.'); }
+  for (const k of ['url', 'github']) data.set(k, form[k].value.trim());
+  data.set('cats', [...picked].join(','));
+  data.set('is_public', $('#pub').checked ? '1' : '0');
+  try {
+    const r = await api(id ? '/api/projects/' + id : '/api/projects', id ? 'PUT' : 'POST', data);
+    location.href = id ? '/project.html?id=' + r.id : '/kit.html?id=' + r.id;   // 새 작품은 홍보 키트로
+  } catch (err) { bad(null, err.message); $('#submit').disabled = false; }
+};
+
+(async () => {
+  const me = await nav();
+  if (!me) return (location.href = '/login.html?next=' + encodeURIComponent(location.pathname + location.search));
+  drawCats();
+  if (!id) { form.maker.value = me.nickname; preview(); return; }
+
+  const p = await api('/api/projects/' + id).catch(() => null);
+  if (!p || !p.mine) return (location.href = '/');
+  document.title = '작품 고치기 · PART';
+  $('#kicker').textContent = 'Edit';
+  $('#head').innerHTML = '작품을 <b>고쳐 볼까요?</b>';
+  $('#submit').innerHTML = '저장하기 <span class="arr" aria-hidden="true">→</span>';
+  $('#fill').remove();
+  for (const k of ['title', 'summary', 'maker', 'url', 'target', 'detail', 'github']) form[k].value = p[k] || '';
+  form.tags.value = p.tags.join(', ');
+  p.cats.forEach((c) => picked.add(c));
+  $('#pub').checked = !!p.is_public;
+  oldImg = p.images[0] || null;
+  $('#pvImg').src = oldImg || FALLBACK_IMG;
+  drawCats(); preview();
+})();
+</script>
+</body>
+</html>
