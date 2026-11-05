@@ -20,7 +20,7 @@
     <p style="color:var(--mute);font-weight:300;margin:16px 0 36px">1분이면 끝나요. 오른쪽 카드가 입력하는 대로 바뀌어요.</p>
 
     <form class="form" id="form" novalidate>
-      <label class="drop"><input type="file" name="images" accept="image/jpeg,image/png,image/webp" multiple><b>대표 사진 올리기</b><span id="photoHint">jpg·png·webp, 5장·장당 5MB까지. 첫 장이 대표 사진이에요</span></label>
+      <label class="drop"><input type="file" name="images" accept="image/jpeg,image/png,image/webp" multiple><b>대표 사진 올리기</b><span id="photoHint">jpg·png·webp, 5장까지. 첫 장이 대표 사진이에요</span></label>
       <div class="f"><label for="f-title">작품 이름 <span class="req">필수</span></label><input class="field-in" id="f-title" name="title" maxlength="40" placeholder="예: 급식 레이더"></div>
       <div class="f"><label for="f-sum">한 줄 소개 <span class="req">필수</span></label><input class="field-in" id="f-sum" name="summary" maxlength="100" placeholder="무엇을 하는 작품인지 한 문장으로"></div>
       <div class="f"><label for="f-maker">만든 사람 <span class="req">필수</span></label><input class="field-in" id="f-maker" name="maker" maxlength="30" placeholder="예: 1학년 4반 홍길동"></div>
@@ -87,7 +87,7 @@ form.images.onchange = () => {
   $('#pvImg').src = blobUrl || oldImg || FALLBACK_IMG;
   $('#photoHint').textContent = files.length
     ? `${files.length}장 골랐어요${files.length > 5 ? ' — 5장까지만 올릴 수 있어요' : ''}${id ? ' (저장하면 기존 사진이 바뀌어요)' : ''}`
-    : 'jpg·png·webp, 5장·장당 5MB까지. 첫 장이 대표 사진이에요';
+    : 'jpg·png·webp, 5장까지. 첫 장이 대표 사진이에요';
 };
 
 $('#fill').onclick = () => {
@@ -108,6 +108,20 @@ function bad(input, msg) {
   if (input) { input.classList.add('bad'); input.focus(); }
   $('#err').textContent = msg ? '⚠ ' + msg : '';
 }
+// 사진을 올리기 전에 브라우저에서 줄인다 (긴 쪽 1600px, JPEG).
+// 저장 공간(Cloudflare KV)을 아끼고, 휴대폰 사진(5~10MB)도 빨리 올라가게
+async function shrink(file, max = 1600) {
+  const img = await createImageBitmap(file);
+  const scale = Math.min(1, max / Math.max(img.width, img.height));
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.round(img.width * scale);
+  canvas.height = Math.round(img.height * scale);
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#fff';                       // 투명한 PNG는 흰 배경으로
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+  return new Promise((ok, fail) => canvas.toBlob((b) => (b ? ok(b) : fail(new Error('shrink'))), 'image/jpeg', 0.82));
+}
 const isHttp = (u) => /^https?:\/\/\S+$/.test(u);
 
 form.onsubmit = async (e) => {
@@ -121,10 +135,15 @@ form.onsubmit = async (e) => {
   bad(null, '');
 
   const data = new FormData(form);
+  data.delete('images');
+  $('#submit').disabled = true;
+  $('#err').textContent = form.images.files.length ? '사진을 줄이는 중…' : '';
+  try {
+    for (const f of form.images.files) data.append('images', await shrink(f), 'photo.jpg');
+  } catch { $('#submit').disabled = false; return bad(null, '사진을 읽지 못했어요. 다른 사진을 골라 주세요.'); }
   for (const k of ['url', 'github']) data.set(k, form[k].value.trim());
   data.set('cats', [...picked].join(','));
   data.set('is_public', $('#pub').checked ? '1' : '0');
-  $('#submit').disabled = true;
   try {
     const r = await api(id ? '/api/projects/' + id : '/api/projects', id ? 'PUT' : 'POST', data);
     location.href = id ? '/project.html?id=' + r.id : '/kit.html?id=' + r.id;   // 새 작품은 홍보 키트로
