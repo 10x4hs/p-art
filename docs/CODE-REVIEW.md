@@ -9,9 +9,10 @@
 
 | 방법 | 어떻게 |
 |---|---|
+| 실제 사이트 | https://p-art.swx2.workers.dev |
 | 웹에서 보기 | https://github.com/10x4hs/p-art (공개 저장소, 로그인 없이 볼 수 있어요) |
 | **줄마다 댓글 달기** | **리뷰 전용 PR** → 저장소의 *Pull requests* 탭에서 `[리뷰 전용]`으로 시작하는 PR → *Files changed* 탭 |
-| 내 컴퓨터에서 돌려 보기 | `git clone https://github.com/10x4hs/p-art && cd p-art && npm install && npm start` → http://localhost:3000 |
+| 내 컴퓨터에서 돌려 보기 | `git clone https://github.com/10x4hs/p-art && cd p-art && npm install && npm run dev` → http://localhost:8787 |
 
 > 리뷰 전용 PR은 "아무것도 없는 상태 → 지금 코드"를 비교하게 만들어 둔 거라서, **모든 파일의 모든 줄**에 댓글을 달 수 있어요. 머지하지 않아요.
 
@@ -22,8 +23,8 @@
 ```mermaid
 flowchart LR
   A["① README.md<br/>5분<br/>무엇을 하는 서비스?"] --> B["② docs/WORKFLOW.md<br/>10분<br/>그림으로 구조 보기"]
-  B --> C["③ backend/server.js<br/>5분<br/>모든 줄 주석"]
-  C --> D["④ routes/auth.js<br/>routes/projects.js<br/>10분"]
+  B --> C["③ backend/src/index.js<br/>+ session.js 5분"]
+  C --> D["④ src/routes/auth.js<br/>src/routes/projects.js<br/>10분"]
   D --> E["⑤ frontend/js/app.js<br/>+ 맡은 HTML 하나<br/>10분"]
 ```
 
@@ -33,8 +34,8 @@ flowchart LR
 
 | 담당 | 볼 파일 | 특히 볼 것 |
 |---|---|---|
-| 백엔드 A | `backend/server.js`, `config.js`, `session-store.js`, `db.js`, `schema.sql` | 설정·로그인 유지·DB 업그레이드 |
-| 백엔드 B | `backend/routes/auth.js`, `routes/projects.js` | 입력 검사, 권한(남의 작품을 고칠 수 없는지) |
+| 백엔드 A | `backend/src/index.js`, `session.js`, `password.js`, `util.js`, `migrations/`, `wrangler.jsonc` | 주소 나누기·로그인 유지·암호화·DB 표 |
+| 백엔드 B | `backend/src/routes/auth.js`, `routes/projects.js` | 입력 검사, 권한(남의 작품을 고칠 수 없는지) |
 | 프론트 A | `frontend/js/app.js`, `index.html`, `works.html` | 공통 함수, 목록·검색 |
 | 프론트 B | `project.html`, `edit.html`, `kit.html`, `login.html`, `signup.html`, `profile.html` | 화면 흐름, 오류 문구 |
 | 공통 | `shared/`, `scripts/smoke-test.js`, `.github/` | 테스트가 무엇을 확인하는지 |
@@ -45,23 +46,26 @@ flowchart LR
 
 ```
 p-art/
-├─ frontend/   화면 — 브라우저가 받는 파일
-├─ backend/    서버 — 브라우저가 절대 못 보는 파일
+├─ frontend/   화면 — Cloudflare가 그대로 보내는 파일
+├─ backend/    서버 — Cloudflare Worker (브라우저는 코드를 못 봄)
 ├─ shared/     둘 다 쓰는 값
 ├─ scripts/    자동 테스트
 ├─ docs/       설명서
-└─ data/       DB·사진 (git에 안 올라감)
+└─ wrangler.jsonc  Cloudflare 연결 설정 (D1·KV·정적 파일)
 ```
 
 | 결정 | 이유 | 다른 선택지와 왜 안 골랐는지 |
 |---|---|---|
-| **한 저장소에 frontend/·backend/ 폴더로 나눔** | 서버 하나가 화면까지 내려줘서 배포가 한 번. API를 바꿀 때 화면 수정도 같은 PR에 담을 수 있음 | 저장소 2개: 배포 2번, 버전 맞추기 어려움. 폴더 구분 없음: 누가 어디를 고치는지 헷갈림 |
-| **frontend/는 서버가 그대로 내려줌** | 빌드 과정 없이 HTML 열면 바로 보임. 수행평가 조건(HTML·CSS·JS) | React/Vite: 배울 게 많고 빌드 단계가 생김 |
-| **backend/ 안에서 역할별 파일** | `server.js`=조립, `config.js`=설정, `session-store.js`=로그인 기억, `db.js`=DB, `routes/`=기능 | 한 파일에 몰기: 처음엔 편하지만 300줄 넘으면 찾기 어려움 |
+| **한 저장소에 frontend/·backend/ 폴더로 나눔** | `wrangler deploy` 한 번에 화면과 서버가 같이 올라감. API를 바꿀 때 화면 수정도 같은 PR에 담을 수 있음 | 저장소 2개: 배포 2번, 버전 맞추기 어려움. 폴더 구분 없음: 누가 어디를 고치는지 헷갈림 |
+| **frontend/는 Cloudflare가 그대로 내려줌** | 빌드 과정 없이 HTML 열면 바로 보임. 수행평가 조건(HTML·CSS·JS) | React/Vite: 배울 게 많고 빌드 단계가 생김 |
+| **backend/src/ 안에서 역할별 파일** | `index.js`=조립, `session.js`=로그인 기억, `password.js`=암호화, `util.js`=공용 도구, `routes/`=기능 | 한 파일에 몰기: 처음엔 편하지만 300줄 넘으면 찾기 어려움 |
 | **routes/를 auth와 projects로** | 주소 앞부분(`/api/…`, `/api/projects/…`)과 파일이 1:1 → 주소만 보고 파일을 찾음 | 기능마다 파일(likes.js, comments.js…): 지금 규모엔 파일이 너무 잘게 쪼개짐 |
-| **shared/categories.js** | 분야 목록을 화면과 서버가 같이 읽음 → 한쪽만 고쳐서 생기는 버그 방지 | 양쪽에 복사: 실제로 그렇게 했다가 이 문제 때문에 합침 |
-| **data/ 폴더 + `DATA_DIR`** | DB와 사진이 한 폴더 → 배포 때 디스크 하나만 붙이면 됨 | 코드 폴더 안에 저장: 재배포할 때 데이터가 사라짐 |
-| **SQLite** | DB 서버 설치 없이 파일 하나. 학교 규모엔 충분 | MySQL/Postgres: 별도 서버·비용 필요 |
+| **shared/categories.json** | 분야 목록을 화면과 서버가 같이 읽음 → 한쪽만 고쳐서 생기는 버그 방지 | 양쪽에 복사: 실제로 그렇게 했다가 이 문제 때문에 합침 |
+| **Cloudflare (Workers + D1 + KV)** | 카드 없이 무료, 배포해도 데이터 유지, 전 세계 어디서나 빠름 | Railway: 무료 체험 끝나 월 $5. Render 무료: 재배포 때 데이터 사라짐 |
+| **migrations/ 폴더** | DB 표를 바꾼 기록이 파일로 남고, 배포 때 순서대로 자동 적용 | 손으로 SQL 실행: 내 컴퓨터와 실제 DB가 달라지기 쉬움 |
+| **D1 (SQLite)** | 처음 만든 SQLite SQL을 거의 그대로 사용. 학교 규모엔 충분 | MySQL/Postgres: 별도 서버·비용 필요 |
+| **사진은 KV + 브라우저에서 줄이기** | 카드 등록 없이 무료. 줄여서 올리니 한도(1GB, 하루 1,000장) 안에서 충분 | R2: 더 넉넉하지만 카드 등록 필요 |
+| **Hono** | Express와 문법이 거의 같고 Cloudflare에서 바로 돌아감 | Express: Workers에서 그대로 돌리기 어려움 |
 | **app.js에 공통 함수** | 카드·메뉴·응원 버튼을 한 곳에서 → 모양을 바꾸면 모든 페이지에 적용 | 페이지마다 복사: 고칠 곳이 8군데 |
 
 ---
@@ -73,7 +77,7 @@ flowchart LR
   F1["feature/fe-…<br/>화면 작업"] -- PR --> DEV
   F2["feature/be-…<br/>서버 작업"] -- PR --> DEV
   DEV["dev<br/>통합·같이 확인"] -- "발표·배포 때 PR" --> MAIN["main<br/>= 실제 사이트"]
-  MAIN -- 자동 --> RW["🚂 Railway"]
+  MAIN -- 자동 --> RW["☁️ Cloudflare"]
   FIX["fix/…<br/>급한 버그"] -. "바로 PR" .-> MAIN
 ```
 
@@ -83,7 +87,7 @@ flowchart LR
 | **`dev`를 하나 더 둠** | 여러 사람 작업을 먼저 합쳐 보고, 같이 돌려 본 다음 main으로. 반쯤 된 기능이 사이트에 나가는 걸 막음 |
 | **`feature/fe-…`, `feature/be-…`** | 이름만 봐도 누가 어느 쪽을 고치는지 앎. 각자 브랜치라 서로 작업을 덮어쓰지 않음 |
 | **직접 push 금지, PR만** | 모든 변경이 PR로 남아서 리뷰·기록이 됨 |
-| **CI 통과해야 머지** | 사람이 놓쳐도 자동 테스트 14개가 가입~삭제를 매번 확인 |
+| **CI 통과해야 머지** | 사람이 놓쳐도 자동 테스트 21개가 가입~탈퇴를 매번 확인 |
 | **승인 0명** | 학생 팀이라 리뷰어가 없어도 막히지 않게. 대신 리뷰는 약속으로 (아래 5번) |
 | **PR 라벨 자동** | 바꾼 폴더를 보고 `frontend`/`backend`가 붙어서, 내 담당 PR만 골라 볼 수 있음 |
 
