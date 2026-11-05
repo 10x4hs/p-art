@@ -22,33 +22,38 @@ flowchart LR
     C["frontend/style.css<br/>디자인"]
   end
 
-  subgraph S["⚙️ Express 서버 (backend/)"]
-    SV["server.js<br/>시작·세션·정적 파일"]
-    AU["routes/auth.js<br/>가입·로그인·내 정보"]
-    PR["routes/projects.js<br/>작품·응원·감상"]
+  subgraph CF["☁️ Cloudflare"]
+    AS["Static Assets<br/>frontend/ 파일 그대로"]
+    subgraph W["Worker (backend/src/)"]
+      IX["index.js<br/>주소 나누기·오류 처리"]
+      SE["session.js<br/>로그인 기억"]
+      AU["routes/auth.js<br/>가입·로그인·내 정보"]
+      PR["routes/projects.js<br/>작품·응원·감상"]
+    end
+    D1[("D1 · SQLite<br/>users · projects · …")]
+    KV[("KV IMAGES<br/>사진")]
   end
 
-  SH["shared/categories.js<br/>분야 목록 (양쪽 공용)"]
+  SH["shared/categories.json<br/>분야 목록 (양쪽 공용)"]
 
-  subgraph D["💾 data/ (Railway 볼륨)"]
-    DB[("part.db<br/>SQLite")]
-    UP["uploads/<br/>사진 파일"]
-  end
-
-  H -- "① 페이지 요청" --> SV
-  SV -- "② HTML·CSS·JS 그대로" --> H
-  J -- "③ fetch('/api/…') JSON" --> AU & PR
-  AU & PR --> DB
-  PR --> UP
-  SH -.-> J
-  SH -.-> PR
+  H -- "① 페이지 요청" --> AS
+  AS -- "② HTML·CSS·JS" --> H
+  J -- "③ fetch('/api/…') JSON" --> IX
+  IX --> SE --> AU & PR
+  AU & PR --> D1
+  PR --> KV
+  SH -.-> IX
+  IX -. "/shared/categories.js" .-> J
 ```
 
 **핵심은 두 단계예요.**
-1. 서버는 `frontend/` 파일을 **그대로** 내려줘요. HTML을 서버가 만들지 않아요.
-2. 페이지가 열리면 `app.js`가 `/api/...`를 불러 **데이터만** 받아 와서 카드를 그려요.
+1. 화면 파일(`frontend/`)은 Cloudflare가 **그대로** 보내요. Worker를 거치지 않아서 빠르고 무료 한도도 안 써요.
+2. 페이지가 열리면 `app.js`가 `/api/...`를 불러요. 이 주소만 Worker(`backend/src/`)가 처리해서 **데이터만** 돌려줘요.
 
-그래서 **보이는 것**은 `frontend/`, **저장·규칙**은 `backend/`에서 고쳐요.
+어떤 주소를 Worker가 먼저 처리할지는 `wrangler.jsonc`의 `run_worker_first`(`/api/*`, `/uploads/*`, `/shared/*`)가 정해요.
+그래서 **보이는 것**은 `frontend/`, **저장·규칙**은 `backend/src/`에서 고쳐요.
+
+> Cloudflare는 주소에서 `.html`을 떼어 줘요 (`/project.html?id=1` → `/project?id=1`). 둘 다 같은 페이지예요.
 
 ---
 
@@ -84,21 +89,21 @@ sequenceDiagram
   actor U as 사용자
   participant F as signup.html<br/>(stepForm)
   participant A as routes/auth.js
-  participant DB as SQLite
+  participant DB as D1
 
   U->>F: 이메일 → 비밀번호 → 닉네임 (한 칸씩)
   Note over F: 칸마다 화면에서 먼저 검사<br/>위쪽 칸 높이 고정 → 입력칸 안 움직임
   F->>A: POST /api/signup {email, password, nickname}
   A->>A: 다시 검사 (화면 검사는 우회 가능하니까)
-  A->>A: 이메일 소문자로, 비밀번호 bcrypt 암호화
+  A->>A: 이메일 소문자로, 비밀번호 PBKDF2 암호화
   A->>DB: INSERT users
-  A->>DB: 세션 저장 (sessions 테이블)
-  A-->>F: Set-Cookie: 세션 번호 + 내 정보
+  A->>DB: 무작위 세션 번호 저장 (sessions 표)
+  A-->>F: Set-Cookie: sid=세션 번호 + 내 정보
   F-->>U: "가입 완료" → 작품 걸기
 ```
 
-- 로그인 상태 = **쿠키 속 세션 번호 → sessions 테이블 → uid**. 서버를 껐다 켜도 유지(30일, 쓸 때마다 연장).
-- 비밀번호 원문은 어디에도 저장되지 않아요.
+- 로그인 상태 = **쿠키 속 세션 번호(sid) → D1 sessions 표 → uid**. 배포해도 유지(30일, 쓸 때마다 연장).
+- 비밀번호 원문은 어디에도 저장되지 않아요. PBKDF2를 쓰는 이유: Workers 무료 요금제는 요청당 CPU 10ms 제한이 있는데, bcrypt(순수 JS)는 100ms쯤 걸려요. PBKDF2는 Cloudflare 기본 기능이라 훨씬 빨라요.
 
 ### 3-2. 작품 걸기
 
@@ -107,20 +112,26 @@ sequenceDiagram
   actor U as 사용자
   participant E as edit.html
   participant P as routes/projects.js
-  participant M as multer
-  participant DB as SQLite
+  participant KV as KV IMAGES
+  participant DB as D1
 
-  U->>E: 칸 입력
+  U->>E: 칸 입력 · 사진 고르기
   E-->>U: 오른쪽 미리보기 카드 즉시 변경 (서버 안 거침)
   U->>E: 전시 시작하기
   E->>E: 필수 칸·주소 형식 검사
+  E->>E: shrink(): 사진을 긴 쪽 1600px JPEG로 줄이기
   E->>P: POST /api/projects (FormData: 글 + 사진 ≤5장)
-  P->>M: 사진 저장 → data/uploads/
   P->>P: readForm(): 길이·주소 검사, 분야는 shared 목록만 남김
-  P->>DB: INSERT projects + images
+  P->>P: pickImages(): 종류·크기·장수 검사
+  P->>DB: INSERT projects
+  P->>KV: 사진마다 무작위 키로 저장
+  P->>DB: INSERT images (키만)
   P-->>E: { id }
-  E-->>U: /kit.html?id= 로 이동 (홍보 키트)
+  E-->>U: /kit?id= 로 이동 (홍보 키트)
 ```
+
+- 사진은 KV에, DB에는 **키(이름)만** 있어요. 화면은 `/uploads/키`로 사진을 불러요 → Worker가 KV에서 꺼내 보내요.
+- 사진을 브라우저에서 줄이는 이유: KV 무료 한도(1GB, 하루 쓰기 1,000번)를 아끼고, 휴대폰 사진(5~10MB)도 빨리 올라가게.
 
 ### 3-3. ▲ 응원 · 💬 한 줄 감상
 
@@ -129,7 +140,7 @@ sequenceDiagram
   actor U as 사용자
   participant APP as app.js (공통 클릭 처리)
   participant P as routes/projects.js
-  participant DB as SQLite
+  participant DB as D1
 
   U->>APP: ▲ 클릭 (어느 페이지든 data-cheer 버튼)
   APP->>P: POST /api/projects/:id/like
@@ -156,7 +167,7 @@ sequenceDiagram
 ```mermaid
 flowchart LR
   Q["검색어 q · 분야 cat · 정렬 sort"] --> API["GET /api/projects?q=&cat=&sort="]
-  API --> SQL["SQL 한 번에<br/>검색 + 분야 + 정렬<br/>비공개는 주인만"]
+  API --> SQL["SQL 한 번에<br/>검색 + 분야 + 정렬 + 작성자·사진·응원 수<br/>비공개는 주인만"]
   SQL --> HOMEV["홈: 앞 6개만 + '전체 보기'"]
   SQL --> WORKSV["전시관: 전부<br/>조건을 주소에 저장"]
   HOMEV -- "조건 그대로 들고 이동" --> WORKSV
@@ -177,7 +188,7 @@ erDiagram
   users {
     int id PK
     text email UK "로그인 (소문자)"
-    text password "bcrypt 암호"
+    text password "PBKDF2 암호"
     text nickname
     text bio
   }
@@ -199,7 +210,7 @@ erDiagram
   images {
     int id PK
     int project_id FK
-    text file "uploads/ 안 파일 이름"
+    text file "KV에 저장된 사진 키"
   }
   likes {
     int user_id PK
@@ -216,8 +227,8 @@ erDiagram
 ```
 
 - 사용자를 지우면 작품·응원이, 작품을 지우면 사진·응원·감상이 **함께 지워져요**(`ON DELETE CASCADE`).
-- `sessions` 테이블(로그인 세션)은 `backend/session-store.js`가 만들어요.
-- `db.js`는 시작할 때 예전 DB를 자동으로 업그레이드해요(`username`→`email`, 새 열 추가).
+- 로그인 세션은 `sessions` 표(sid, uid, expires)에 있어요.
+- 표 구조는 `backend/migrations/0001_init.sql`. 바꿀 땐 **새 파일**(`0002_….sql`)을 추가해요 → 배포할 때 자동 적용.
 
 ---
 
@@ -226,17 +237,18 @@ erDiagram
 ```mermaid
 flowchart LR
   subgraph LOCAL["💻 내 컴퓨터"]
-    BR["feature/fe-… 또는<br/>feature/be-… 브랜치"] --> CODE["코드 수정"] --> T["npm test"]
+    BR["feature/fe-… 또는<br/>feature/be-… 브랜치"] --> CODE["코드 수정<br/>npm run dev (로컬 D1·KV)"] --> T["npm test"]
   end
   T -- push --> PR["Pull Request → dev"]
-  PR --> CI{"GitHub Actions<br/>문법 검사 + 테스트"}
+  PR --> CI{"GitHub Actions CI<br/>문법 검사 + 테스트 21개"}
   CI -- 실패 --> CODE
   CI -- 통과 + 라벨 자동 --> DEV["dev 브랜치<br/>(통합)"]
   DEV -- "발표·배포할 때 PR" --> MAIN["main 브랜치<br/>(배포용)"]
-  MAIN -- 자동 배포 --> RW["🚂 Railway<br/>npm start"]
-  RW --> VOL[("볼륨 /data<br/>part.db + uploads")]
-  RW --> HC["/api/health 확인 후 교체"]
+  MAIN -- "Deploy 워크플로" --> CFD["☁️ Cloudflare<br/>DB 표 업데이트 → 배포"]
+  CFD --> LIVE["🌐 p-art.swx2.workers.dev"]
 ```
+
+- `npm run dev`는 **내 컴퓨터 안에 가짜 D1·KV**를 만들어서 돌려요. 실제 사이트 데이터는 건드리지 않아요.
 
 브랜치 규칙은 [CONTRIBUTING.md](../CONTRIBUTING.md), 배포 방법은 [DEPLOY.md](DEPLOY.md)에 있어요.
 
@@ -251,8 +263,9 @@ flowchart LR
 | 카드 모양 (모든 페이지 공통) | `frontend/js/app.js`의 `card()` | FE |
 | 홈에 보이는 작품 수 | `frontend/index.html`의 `HOME_LIMIT` | FE |
 | 홍보 문구 | `frontend/kit.html`의 `promos()` | FE |
-| 분야 추가·변경 | `shared/categories.js` **한 곳만** | 공용 |
-| 입력 규칙(길이 등) | `backend/routes/*.js` + 화면 쪽 검사도 같이 | BE+FE |
-| 새 API | `backend/routes/`에 추가 → `server.js`에서 연결 → API 표 갱신 | BE |
-| 포트·폴더·비밀키 | `backend/config.js` (환경변수) | BE |
-| 테이블 구조 | `backend/schema.sql` + 예전 DB용 업그레이드는 `db.js` | BE |
+| 분야 추가·변경 | `shared/categories.json` **한 곳만** | 공용 |
+| 입력 규칙(길이 등) | `backend/src/routes/*.js` + 화면 쪽 검사도 같이 | BE+FE |
+| 새 API | `backend/src/routes/`에 추가 → `index.js`에서 `app.route` → API 표 갱신 | BE |
+| 사진 크기·장수 | 화면 `edit.html`의 `shrink()` + 서버 `projects.js`의 `MAX_BYTES`·`MAX_FILES` | FE+BE |
+| Worker가 먼저 처리할 주소 | `wrangler.jsonc`의 `run_worker_first` | BE |
+| 테이블 구조 | `backend/migrations/`에 새 `000N_….sql` 추가 | BE |
