@@ -16,10 +16,24 @@ Node.js 20 이상이 필요해요.
 ```bash
 npm install
 npm start          # → http://localhost:3000
+npm run dev        # 코드를 고치면 서버가 자동으로 다시 켜져요
+npm test           # 임시 DB로 가입~삭제까지 자동 확인
 ```
 
-처음 실행하면 `part.db`가 자동으로 만들어지고 빈 전시관에서 시작해요.
+처음 실행하면 `data/` 폴더에 `part.db`가 만들어지고 빈 전시관에서 시작해요.
 가입 → 작품 걸기 → 홍보 키트 순서로 눌러 보면 전체 흐름을 볼 수 있어요.
+
+## 한눈에 보기
+
+```mermaid
+flowchart LR
+  B["🖥️ 브라우저<br/>frontend/"] -- "fetch /api/…" --> S["⚙️ Express<br/>backend/"]
+  S -- "HTML·CSS·JS" --> B
+  S --> D[("💾 data/<br/>part.db + uploads")]
+  SH["shared/<br/>분야 목록"] -.-> B & S
+```
+
+📘 **자세한 그림 설명: [docs/WORKFLOW.md](docs/WORKFLOW.md)** · 🚂 배포: [docs/DEPLOY.md](docs/DEPLOY.md) · 🤝 같이 작업하기: [CONTRIBUTING.md](CONTRIBUTING.md) · 🔰 코드 해설(초보자용): [EXPLAIN.md](EXPLAIN.md)
 
 ## 기능
 
@@ -47,17 +61,24 @@ npm start          # → http://localhost:3000
 ## 폴더 구조
 
 ```
-server.js            서버 시작, 세션(SQLite에 저장), 정적 파일, 오류 처리
-db.js                DB 연결 + 예전 DB 자동 업그레이드
-schema.sql           테이블: users, projects, images, likes, comments (+ sessions)
-routes/auth.js       /api/signup, /login, /logout, /me, /users/:id
-routes/projects.js   /api/projects 목록·상세·등록·수정·삭제, /like, /comments
-public/              화면 (위 '페이지' 표)
-public/js/app.js     모든 화면이 같이 쓰는 함수 (api 호출, 메뉴, 카드, 응원, 한 칸 입력 폼)
-public/style.css     디자인 — 포인트색은 맨 위 --accent
-public/img/          디자인 사진 (CC0)
-uploads/             사용자가 올린 사진 (git에는 안 올라감)
-docs/WORKFLOW.md     프로젝트가 어떻게 돌아가는지 자세한 설명
+frontend/                 화면 (FE 담당)
+  index.html  works.html  project.html  edit.html  kit.html
+  login.html  signup.html profile.html
+  js/app.js               모든 화면이 같이 쓰는 함수 (api 호출, 메뉴, 카드, 응원, 한 칸 입력 폼)
+  style.css               디자인 — 포인트색은 맨 위 --accent
+  img/                    디자인 사진 (CC0)
+backend/                  서버 (BE 담당)
+  server.js               시작점: 세션·정적 파일·API 연결
+  config.js               포트·비밀키·데이터 폴더 (환경변수)
+  session-store.js        로그인 세션을 SQLite에 저장
+  db.js  schema.sql       DB 연결·테이블·예전 DB 업그레이드
+  routes/auth.js          /api/signup, /login, /logout, /me, /users/:id
+  routes/projects.js      /api/projects 목록·상세·등록·수정·삭제, /like, /comments
+shared/categories.js      분야 목록 (프론트·백엔드 공용)
+scripts/smoke-test.js     npm test
+data/                     DB와 업로드 사진 (git에는 안 올라감, 배포에선 볼륨)
+docs/                     WORKFLOW(그림 설명), DEPLOY(배포)
+.github/                  CI, PR 라벨 자동, PR 템플릿
 ```
 
 ## API 요약
@@ -78,11 +99,12 @@ docs/WORKFLOW.md     프로젝트가 어떻게 돌아가는지 자세한 설명
 
 ## 인터넷에 올릴 때
 
-Express와 SQLite를 돌릴 서버가 필요해요 (Render, Railway, Fly.io 등). 정적 호스팅(Vercel 정적, GitHub Pages)으로는 안 돼요.
+Railway에 올려요. `main` 브랜치에 머지하면 자동 배포되고, DB·사진은 볼륨(`/data`)에 남아요.
+환경변수 `SECRET`, `DATA_DIR=/data`, `NODE_ENV=production`이 필요해요. 단계별 방법은 **[docs/DEPLOY.md](docs/DEPLOY.md)**.
 
-1. 환경변수 `SECRET`을 길고 무작위한 문자열로 설정 (로그인 쿠키 서명용)
-2. `part.db`와 `uploads/`가 있는 폴더에 **영구 디스크**를 붙이기 — 없으면 다시 배포할 때 가입 정보·작품·사진이 사라져요
-3. 시작 명령: `npm start`
+## 브랜치
+
+`main`(배포) ← `dev`(통합) ← `feature/fe-…`, `feature/be-…`. 자세한 규칙은 [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## 아직 없는 것
 
