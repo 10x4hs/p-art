@@ -1,6 +1,7 @@
 const router = require('express').Router();
 const bcrypt = require('bcryptjs');
 const db = require('../db');
+const { UPLOAD_DIR } = require('../config');
 
 const fail = (res, code, error) => res.status(code).json({ error });
 const needLogin = (req, res, next) => (req.session.uid ? next() : fail(res, 401, '로그인이 필요해요'));
@@ -46,7 +47,7 @@ router.put('/me', needLogin, (req, res) => {
 router.delete('/me', needLogin, (req, res) => {
   // 내 작품의 사진 파일도 지운다 (DB 행은 ON DELETE CASCADE로 같이 지워짐)
   db.prepare('SELECT i.file FROM images i JOIN projects p ON p.id = i.project_id WHERE p.user_id = ?').all(req.session.uid)
-    .forEach((i) => require('fs').rmSync(require('path').join('uploads', i.file), { force: true }));
+    .forEach((i) => require('fs').rmSync(require('path').join(UPLOAD_DIR, i.file), { force: true }));
   db.prepare('DELETE FROM users WHERE id = ?').run(req.session.uid);
   req.session.destroy(() => res.json({ ok: true }));
 });

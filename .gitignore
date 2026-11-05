@@ -1,6 +1,5 @@
 node_modules
-part.db*
-uploads/*
-!uploads/.gitkeep
+data/
 .grill/
 .DS_Store
+.env

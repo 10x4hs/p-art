@@ -3,12 +3,14 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const db = require('../db');
+const { UPLOAD_DIR } = require('../config');
+const CATS = require('../../shared/categories');
 const { needLogin } = require('./auth');
 
 const OK_TYPES = { 'image/jpeg': '.jpg', 'image/png': '.png', 'image/webp': '.webp' };
 const upload = multer({
   storage: multer.diskStorage({
-    destination: 'uploads',
+    destination: UPLOAD_DIR,
     filename: (req, file, cb) => cb(null, Date.now() + '-' + Math.random().toString(36).slice(2) + OK_TYPES[file.mimetype]),
   }),
   limits: { fileSize: 5 * 1024 * 1024, files: 5 },
@@ -16,7 +18,6 @@ const upload = multer({
 });
 
 const isHttp = (u) => /^https?:\/\/\S+$/.test(u);
-const CATS = ['웹사이트', '게임', '학교생활', '공부', '도구'];
 const split = (v) => (v ? v.split(',') : []);
 
 // 목록·상세에 공통으로 붙는 정보(작성자, 이미지, 좋아요 수, 내가 눌렀는지)
@@ -95,7 +96,7 @@ router.put('/:id', needLogin, mine, upload.array('images', 5), (req, res) => {
   db.prepare(`UPDATE projects SET title=@title, summary=@summary, detail=@detail, url=@url, github=@github, tags=@tags, cats=@cats, maker=@maker, target=@target, is_public=@is_public
     WHERE id=@id`).run({ id: req.params.id, ...f });
   if (req.files.length) {            // 새 이미지를 올리면 기존 이미지를 교체
-    db.prepare('SELECT file FROM images WHERE project_id = ?').all(req.params.id).forEach((i) => fs.rmSync(path.join('uploads', i.file), { force: true }));
+    db.prepare('SELECT file FROM images WHERE project_id = ?').all(req.params.id).forEach((i) => fs.rmSync(path.join(UPLOAD_DIR, i.file), { force: true }));
     db.prepare('DELETE FROM images WHERE project_id = ?').run(req.params.id);
     addImages(req.params.id, req.files);
   }
@@ -103,7 +104,7 @@ router.put('/:id', needLogin, mine, upload.array('images', 5), (req, res) => {
 });
 
 router.delete('/:id', needLogin, mine, (req, res) => {
-  db.prepare('SELECT file FROM images WHERE project_id = ?').all(req.params.id).forEach((i) => fs.rmSync(path.join('uploads', i.file), { force: true }));
+  db.prepare('SELECT file FROM images WHERE project_id = ?').all(req.params.id).forEach((i) => fs.rmSync(path.join(UPLOAD_DIR, i.file), { force: true }));
   db.prepare('DELETE FROM projects WHERE id = ?').run(req.params.id);
   res.json({ ok: true });
 });

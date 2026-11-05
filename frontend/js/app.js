@@ -3,7 +3,7 @@ const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
 const esc = (s = '') => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const param = (k) => new URLSearchParams(location.search).get(k);
-const CATS = ['웹사이트', '게임', '학교생활', '공부', '도구'];
+// CATS(분야 목록)는 /shared/categories.js에서 온다 — 각 HTML이 app.js보다 먼저 불러온다
 const FALLBACK_IMG = '/img/hero.jpg';
 const pageUrl = (id) => `${location.origin}/project.html?id=${id}`;
 

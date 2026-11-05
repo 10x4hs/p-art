@@ -1,5 +1,6 @@
 const Database = require('better-sqlite3');
-const db = new Database('part.db');
+const { DB_FILE } = require('./config');
+const db = new Database(DB_FILE);
 db.pragma('foreign_keys = ON');
 // 예전 DB(아이디 로그인)라면 username 열을 email로 바꾼다 — 테이블을 만들기 전에 처리
 const old = db.prepare("SELECT 1 FROM pragma_table_info('users') WHERE name = 'username'").get();
