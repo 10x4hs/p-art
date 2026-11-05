@@ -6,34 +6,35 @@
 작품을 걸면 단톡방·인스타에 바로 붙여 넣을 홍보 문구도 만들어 줍니다.
 
 - 화면: HTML · CSS · 바닐라 JavaScript (프레임워크 없음)
-- 서버: Node.js + Express
-- DB: SQLite (`better-sqlite3`, 파일 하나 `part.db`)
+- 서버: Cloudflare Workers + [Hono](https://hono.dev)
+- DB: Cloudflare D1 (SQLite) · 사진: Cloudflare KV
+- 🌐 **https://p-art.swx2.workers.dev** (무료 요금제)
 
 ## 바로 실행하기
 
-Node.js 20 이상이 필요해요.
+Node.js 20 이상이 필요해요. Cloudflare 계정은 **없어도** 돼요 (내 컴퓨터에 가짜 D1·KV를 만들어서 돌려요).
 
 ```bash
 npm install
-npm start          # → http://localhost:3000
-npm run dev        # 코드를 고치면 서버가 자동으로 다시 켜져요
-npm test           # 임시 DB로 가입~삭제까지 자동 확인
+npm run dev        # → http://localhost:8787  (코드를 고치면 자동 반영)
+npm test           # 임시 DB로 가입~탈퇴까지 21가지 자동 확인
 ```
 
-처음 실행하면 `data/` 폴더에 `part.db`가 만들어지고 빈 전시관에서 시작해요.
+처음 실행하면 `.wrangler/` 폴더에 로컬 DB가 만들어지고 빈 전시관에서 시작해요.
 가입 → 작품 걸기 → 홍보 키트 순서로 눌러 보면 전체 흐름을 볼 수 있어요.
 
 ## 한눈에 보기
 
 ```mermaid
 flowchart LR
-  B["🖥️ 브라우저<br/>frontend/"] -- "fetch /api/…" --> S["⚙️ Express<br/>backend/"]
-  S -- "HTML·CSS·JS" --> B
-  S --> D[("💾 data/<br/>part.db + uploads")]
-  SH["shared/<br/>분야 목록"] -.-> B & S
+  B["🖥️ 브라우저<br/>frontend/"] -- "fetch /api/…" --> W["⚙️ Worker<br/>backend/src/"]
+  CF["☁️ Cloudflare 정적 파일"] -- "HTML·CSS·JS" --> B
+  W --> D1[("D1<br/>가입·작품·감상")]
+  W --> KV[("KV<br/>사진")]
+  SH["shared/<br/>분야 목록"] -.-> W
 ```
 
-📘 **자세한 그림 설명: [docs/WORKFLOW.md](docs/WORKFLOW.md)** · 🚂 배포: [docs/DEPLOY.md](docs/DEPLOY.md) · 🤝 같이 작업하기: [CONTRIBUTING.md](CONTRIBUTING.md) · 🔰 코드 해설(초보자용): [EXPLAIN.md](EXPLAIN.md)
+📘 **자세한 그림 설명: [docs/WORKFLOW.md](docs/WORKFLOW.md)** · 🚂 배포: [docs/DEPLOY.md](docs/DEPLOY.md) · 🤝 같이 작업하기: [CONTRIBUTING.md](CONTRIBUTING.md) · 🔰 코드 해설(초보자용): [EXPLAIN.md](EXPLAIN.md) · 🔍 코드 리뷰: [docs/CODE-REVIEW.md](docs/CODE-REVIEW.md)
 
 ## 기능
 
@@ -61,24 +62,25 @@ flowchart LR
 ## 폴더 구조
 
 ```
-frontend/                 화면 (FE 담당)
+frontend/                 화면 (FE 담당) — Cloudflare가 그대로 보내는 파일
   index.html  works.html  project.html  edit.html  kit.html
   login.html  signup.html profile.html
   js/app.js               모든 화면이 같이 쓰는 함수 (api 호출, 메뉴, 카드, 응원, 한 칸 입력 폼)
   style.css               디자인 — 포인트색은 맨 위 --accent
   img/                    디자인 사진 (CC0)
-backend/                  서버 (BE 담당)
-  server.js               시작점: 세션·정적 파일·API 연결
-  config.js               포트·비밀키·데이터 폴더 (환경변수)
-  session-store.js        로그인 세션을 SQLite에 저장
-  db.js  schema.sql       DB 연결·테이블·예전 DB 업그레이드
-  routes/auth.js          /api/signup, /login, /logout, /me, /users/:id
-  routes/projects.js      /api/projects 목록·상세·등록·수정·삭제, /like, /comments
-shared/categories.js      분야 목록 (프론트·백엔드 공용)
+backend/                  서버 (BE 담당) — Cloudflare Worker
+  src/index.js            시작점: 주소 나누기, 사진·분야 보내기, 오류 처리
+  src/session.js          로그인 세션 (쿠키 sid ↔ D1 sessions 표)
+  src/password.js         비밀번호 암호화 (PBKDF2)
+  src/util.js             공용 도구 (오류, 주소 검사, IP)
+  src/routes/auth.js      /api/signup, /login, /logout, /me, /users/:id
+  src/routes/projects.js  /api/projects 목록·상세·등록·수정·삭제, /like, /comments
+  migrations/             DB 표 구조 (0001_init.sql, 바꿀 땐 0002_… 추가)
+shared/categories.json    분야 목록 (프론트·백엔드 공용)
 scripts/smoke-test.js     npm test
-data/                     DB와 업로드 사진 (git에는 안 올라감, 배포에선 볼륨)
-docs/                     WORKFLOW(그림 설명), DEPLOY(배포)
-.github/                  CI, PR 라벨 자동, PR 템플릿
+wrangler.jsonc            Cloudflare 설정 (D1·KV 연결, 정적 파일)
+docs/                     WORKFLOW(그림 설명), DEPLOY(배포), CODE-REVIEW(리뷰 가이드)
+.github/                  CI, 자동 배포, PR 라벨 자동, PR 템플릿
 ```
 
 ## API 요약
@@ -92,15 +94,15 @@ docs/                     WORKFLOW(그림 설명), DEPLOY(배포)
 | GET | `/api/users/:id` | 공개 프로필 | |
 | GET | `/api/projects?q=&cat=&sort=hot\|new&user=` | 작품 목록 | |
 | GET | `/api/projects/:id` | 작품 상세 | |
-| POST / PUT / DELETE | `/api/projects[/:id]` | 등록 / 수정 / 삭제 (multipart, `images` 5장) | ✔ 본인 |
+| POST / PUT / DELETE | `/api/projects[/:id]` | 등록 / 수정 / 삭제 (multipart, `images` 5장·장당 1.5MB) | ✔ 본인 |
 | POST | `/api/projects/:id/like` | ▲ 응원 켜기·끄기 | ✔ |
 | GET / POST | `/api/projects/:id/comments` | 한 줄 감상 보기 / 남기기 (IP당 1분 5개) | |
 | DELETE | `/api/projects/:id/comments/:cid` | 감상 지우기 | ✔ 작품 주인 |
 
-## 인터넷에 올릴 때
+## 배포
 
-Railway에 올려요. `main` 브랜치에 머지하면 자동 배포되고, DB·사진은 볼륨(`/data`)에 남아요.
-환경변수 `SECRET`, `DATA_DIR=/data`, `NODE_ENV=production`이 필요해요. 단계별 방법은 **[docs/DEPLOY.md](docs/DEPLOY.md)**.
+**Cloudflare 무료 요금제**에서 돌아가요 → https://p-art.swx2.workers.dev
+`main`에 머지되면 GitHub Actions가 테스트 → DB 표 업데이트 → 배포까지 자동으로 해요. 자세한 내용과 무료 한도는 **[docs/DEPLOY.md](docs/DEPLOY.md)**.
 
 ## 브랜치
 
