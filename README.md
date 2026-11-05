@@ -106,10 +106,6 @@ Railway에 올려요. `main` 브랜치에 머지하면 자동 배포되고, DB·
 
 `main`(배포) ← `dev`(통합) ← `feature/fe-…`, `feature/be-…`. 자세한 규칙은 [CONTRIBUTING.md](CONTRIBUTING.md).
 
-## 아직 없는 것
-
-구글 로그인, 이메일 인증, 비밀번호 찾기, 관리자 화면.
-
 ## 출처
 
 사진: Unsplash, StockSnap, rawpixel (CC0)
