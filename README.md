@@ -2,6 +2,8 @@
 
 > 학생이 만든 프로젝트를 링크 대신 **작품처럼 걸어 두는** 학교 전시관.
 
+<img width="1678" height="867" alt="image" src="https://github.com/user-attachments/assets/67b51ed3-c40b-4623-a5c5-a3ddfecba144" />
+
 수행평가로 만든 웹페이지·게임·도구를 카드로 걸고, 친구들은 써 보고 ▲ 응원과 한 줄 감상을 남깁니다.
 작품을 걸면 단톡방·인스타에 바로 붙여 넣을 홍보 문구도 만들어 줍니다.
 
@@ -107,10 +109,6 @@ docs/                     WORKFLOW(그림 설명), DEPLOY(배포), CODE-REVIEW(�
 ## 브랜치
 
 `main`(배포) ← `dev`(통합) ← `feature/fe-…`, `feature/be-…`. 자세한 규칙은 [CONTRIBUTING.md](CONTRIBUTING.md).
-
-## 아직 없는 것
-
-구글 로그인, 이메일 인증, 비밀번호 찾기, 관리자 화면.
 
 ## 출처
 
