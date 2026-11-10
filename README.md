@@ -25,7 +25,7 @@
 
 <sub>어두운 테마, 1280×800 · 로컬에서 샘플 작품 4개를 걸어 두고 찍었어요.</sub>
 
-## ✨ 무엇을 할 수 있나요
+## 무엇을 할 수 있나요
 
 | 기능 | 설명 |
 |---|---|
@@ -39,7 +39,7 @@
 | 프로필 | 닉네임·소개를 고치고, 내가 걸어 둔 작품을 한곳에서 봐요 |
 | 밝은/어두운 테마 | 어두운 화면이 기본이고, ☀ 버튼으로 밝은 화면으로 바꿔요 (선택은 기억돼요) |
 
-## 🧭 구조
+## 구조
 
 ```mermaid
 flowchart LR
@@ -51,7 +51,7 @@ flowchart LR
 
 자세한 흐름은 [docs/WORKFLOW.md](docs/WORKFLOW.md)에 그림으로 설명돼 있어요.
 
-## 빠른 시작
+## Fast study
 
 Node.js 20 이상만 있으면 돼요. Cloudflare 계정은 **없어도** 돼요 (내 컴퓨터에 가짜 D1·R2를 만들어서 돌려요).
 
@@ -63,7 +63,7 @@ npm test        # 임시 DB로 가입~탈퇴까지 자동 확인
 
 배포는 손으로 하지 않아요. **`main`에 머지되면** GitHub Actions가 테스트 → DB 업데이트 → 배포까지 자동으로 해요. ([docs/DEPLOY.md](docs/DEPLOY.md))
 
-## 📁 폴더 구조
+## folder
 
 ```
 frontend/              화면 — HTML 페이지들, style.css, js/app.js(공용 함수), img/
@@ -77,7 +77,7 @@ wrangler.jsonc         Cloudflare 설정 (D1·R2 연결, 정적 파일)
 .github/               CI, 자동 배포, PR 템플릿
 ```
 
-## 팀
+## team
 
 | 이름 | 역할 | 맡은 일 |
 |---|---|---|
@@ -86,7 +86,7 @@ wrangler.jsonc         Cloudflare 설정 (D1·R2 연결, 정적 파일)
 | GEK  | Frontend | 카드 · 로그인 · 등록 폼 · 전시 페이지 |
 | JSH  | Backend | API · DB · 로그인 · 업로드 |
 
-## 📚 문서
+## doc
 
 - [docs/WORKFLOW.md](docs/WORKFLOW.md) — 전체 흐름 그림 설명
 - [docs/DEPLOY.md](docs/DEPLOY.md) — 배포와 무료 한도
