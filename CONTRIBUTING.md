@@ -1,7 +1,7 @@
 # 같이 작업하는 법 (Frontend · Backend 한 레포)
 
 PART는 **한 저장소 안에서 폴더로 프론트와 백엔드를 나눠요.** 저장소를 둘로 쪼개지 않는 이유:
-- 서버 하나(Express)가 화면 파일까지 내려주니 배포가 한 번이면 끝나요.
+- Cloudflare 배포 한 번(`wrangler deploy`)으로 화면 파일과 서버가 같이 올라가요.
 - API를 바꿀 때 프론트·백엔드 수정을 **한 PR**에 같이 담을 수 있어요(어긋날 일이 적음).
 
 ## 폴더 = 담당
@@ -9,7 +9,7 @@ PART는 **한 저장소 안에서 폴더로 프론트와 백엔드를 나눠요.
 | 폴더 | 담당 | 내용 |
 |---|---|---|
 | `frontend/` | FE | HTML, CSS, 브라우저 JS, 디자인 사진 |
-| `backend/` | BE | Express 서버, DB, API |
+| `backend/` | BE | Cloudflare Worker(API), DB 표(migrations) |
 | `shared/` | 둘 다 | 양쪽이 같이 쓰는 값 (분야 목록) |
 | `scripts/` | 둘 다 | 테스트 |
 | `docs/` | 둘 다 | 설명서 |
@@ -37,7 +37,7 @@ gitGraph
 
 | 브랜치 | 용도 | 규칙 |
 |---|---|---|
-| `main` | **배포용**. 여기에 들어가면 Railway가 자동 배포 | 직접 push 금지, PR + CI 통과만 |
+| `main` | **배포용**. 여기에 들어가면 Cloudflare에 자동 배포 | 직접 push 금지, PR + CI 통과만 |
 | `dev` | 통합. 기능을 모아서 같이 확인 | PR + CI 통과 |
 | `feature/fe-<할일>` | 화면 작업 | `dev`에서 따서 `dev`로 PR |
 | `feature/be-<할일>` | 서버 작업 | 〃 |
@@ -78,7 +78,7 @@ docs: 배포 방법 추가
 
 ```bash
 npm run check   # 모든 JS 문법 검사
-npm test        # 임시 DB로 서버를 띄워 가입~삭제까지 14가지 확인
+npm test        # 로컬 Cloudflare(D1·R2)를 띄워 가입~탈퇴까지 21가지 확인
 ```
 
 CI(GitHub Actions)도 같은 두 명령을 돌려요. 빨간 X가 뜨면 머지할 수 없어요.

@@ -1,0 +1,25 @@
+# main 브랜치에 들어오면 Cloudflare에 자동 배포한다.
+# 필요한 것: 저장소 Settings → Secrets → CLOUDFLARE_API_TOKEN (docs/DEPLOY.md 참고)
+name: Deploy
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+concurrency: deploy
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - name: DB 표 업데이트 + 배포
+        run: npm run deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: 205c97c5fc1c85620f45728d643b0235
+          CI: "1"
