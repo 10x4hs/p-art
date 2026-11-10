@@ -48,12 +48,12 @@ CREATE TABLE projects (
   created_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 
--- [뜻/역할] 작품 사진 표예요. 한 줄 = 사진 한 장. 사진 데이터 자체는 KV에 있고, 여기에는 '어느 작품의 어느 사진인지'만 적어요.
+-- [뜻/역할] 작품 사진 표예요. 한 줄 = 사진 한 장. 사진 데이터 자체는 R2에 있고, 여기에는 '어느 작품의 어느 사진인지'만 적어요.
 -- [작성 이유] 작품 하나에 사진이 여러 장일 수 있어서 projects 표와 따로 나눴어요.
 CREATE TABLE images (
   id         INTEGER PRIMARY KEY,
   project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
-  -- [뜻/역할] KV(IMAGES)에 저장된 사진의 키
+  -- [뜻/역할] R2(IMAGES, 버킷 p-art-uploads)에 저장된 사진의 키
   file       TEXT NOT NULL
 );
 

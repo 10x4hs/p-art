@@ -1,4 +1,4 @@
-// [파일 개요] 빠른 동작 확인(스모크 테스트) 스크립트예요. 임시 폴더에 로컬 Cloudflare(D1·KV)를 띄우고 핵심 API를 차례로 호출해 봐요.
+// [파일 개요] 빠른 동작 확인(스모크 테스트) 스크립트예요. 임시 폴더에 로컬 Cloudflare(D1·R2)를 띄우고 핵심 API를 차례로 호출해 봐요.
 // [비유] 새 가게 문을 열기 전에 직원이 손님인 척 들어와서 "회원가입 → 작품 등록 → 응원 → 감상 → 탈퇴"를 한 바퀴 돌아보는 '리허설'이에요.
 // [뜻/역할] 사용: npm test   (CI(GitHub Actions)에서도 같은 명령으로 돌아요. 모두 내 컴퓨터 안에서만 돌아서 Cloudflare 로그인은 필요 없어요)
 // [작성 이유] 코드를 고친 뒤 중요한 기능이 망가지지 않았는지 사람이 일일이 눌러 보지 않고 1분 안에 확인하려고요.
@@ -18,7 +18,7 @@ const BASE = `http://127.0.0.1:${PORT}`;
 const root = path.resolve(import.meta.dirname, '..');
 // [뜻/역할] npm으로 설치된 wrangler 실행 파일 경로예요.
 const wrangler = path.join(root, 'node_modules', '.bin', 'wrangler');
-// [뜻/역할] 운영체제 임시 폴더에 'part-test-xxxx' 같은 새 폴더를 만들어, 테스트용 DB·KV 데이터를 여기에만 저장해요.
+// [뜻/역할] 운영체제 임시 폴더에 'part-test-xxxx' 같은 새 폴더를 만들어, 테스트용 DB·R2 데이터를 여기에만 저장해요.
 // [작성 이유] 내가 평소 쓰는 로컬 DB(.wrangler/)를 건드리지 않고, 매번 빈 DB에서 깨끗하게 시작하려고요.
 const persist = fs.mkdtempSync(path.join(os.tmpdir(), 'part-test-'));
 
@@ -97,7 +97,7 @@ async function main() {
   // [뜻/역할] javascript: 주소는 위험하니 400으로 거절돼야 해요.
   check('잘못된 주소 거절', (await call('POST', '/api/projects', form({ title: 't', summary: 's', url: 'javascript:alert(1)' }))).status === 400);
 
-  // [뜻/역할] 분야 필터, 사진 내려받기(KV → /uploads/키), 응원 켜기를 확인해요.
+  // [뜻/역할] 분야 필터, 사진 내려받기(R2 → /uploads/키), 응원 켜기를 확인해요.
   r = await call('GET', '/api/projects?cat=학교생활');
   check('분야 필터 + 없는 분야는 버림', r.data.length === 1 && r.data[0].cats.join() === '학교생활');
   const img = await fetch(BASE + r.data[0].images[0]);

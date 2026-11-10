@@ -44,18 +44,20 @@ app.route('/api/projects', projects);                 // /api/projects …
 app.get('/shared/categories.js', (c) =>
   c.body(`window.CATS = ${JSON.stringify(CATS)};`, 200, { 'Content-Type': 'text/javascript; charset=utf-8', 'Cache-Control': 'no-cache' }));
 
-// [뜻/역할] /uploads/사진키 로 오면 KV 저장소(IMAGES)에서 그 사진을 꺼내 보내 줘요.
-// [비유] KV는 '이름표(키) 붙은 사물함'이에요. 키를 알면 사물함에서 물건(사진 데이터)을 바로 꺼낼 수 있어요.
-// [문법] c.env.IMAGES 는 wrangler.jsonc에서 연결(binding)한 KV 저장소예요. c.env에는 이렇게 연결된 DB·KV 같은 도구들이 들어 있어요.
-//        getWithMetadata(키, 'arrayBuffer') 는 사진 데이터(value)와 함께 저장해 둔 부가 정보(metadata)를 같이 꺼내요.
+// [뜻/역할] /uploads/사진키 로 오면 R2 저장소(IMAGES)에서 그 사진을 꺼내 보내 줘요.
+// [비유] R2는 '파일 창고'예요. 이름표(키)를 알면 창고에서 파일(사진)을 바로 꺼낼 수 있어요.
+// [문법] c.env.IMAGES 는 wrangler.jsonc에서 연결(binding)한 R2 버킷이에요. c.env에는 이렇게 연결된 DB·R2 같은 도구들이 들어 있어요.
+//        get(키) 은 파일이 없으면 null, 있으면 내용(obj.body)과 저장할 때 적어 둔 정보(obj.httpMetadata.contentType)를 줘요.
+//        obj.body 는 스트림이라 사진을 메모리에 다 올리지 않고 흘려보내듯 바로 전달해요.
 //        :key 는 주소의 그 자리 글자를 c.req.param('key')로 꺼낼 수 있다는 뜻이에요.
 // [작성 이유] 사진 키는 한 번 정해지면 절대 안 바뀌니까, 브라우저가 1년(31536000초) 동안 저장해 두고 다시 받지 않아도 돼요(immutable).
+//            R2는 KV보다 큰 파일에 맞고, 쓰기 횟수 제한도 넉넉해서 사진 저장에 더 알맞아요.
 app.get('/uploads/:key', async (c) => {
-  const { value, metadata } = await c.env.IMAGES.getWithMetadata(c.req.param('key'), 'arrayBuffer');
+  const obj = await c.env.IMAGES.get(c.req.param('key'));
   // [뜻/역할] 그런 키의 사진이 없으면 404(찾을 수 없음)로 응답해요.
-  if (!value) return c.notFound();
-  // [문법] metadata?.type — ?.(옵셔널 체이닝)은 metadata가 없으면 에러 대신 undefined를 줘요. 그러면 || 뒤의 'image/jpeg'를 써요.
-  return c.body(value, 200, { 'Content-Type': metadata?.type || 'image/jpeg', 'Cache-Control': 'public, max-age=31536000, immutable' });
+  if (!obj) return c.notFound();
+  // [문법] obj.httpMetadata?.contentType — ?.(옵셔널 체이닝)은 값이 없으면 에러 대신 undefined를 줘요. 그러면 || 뒤의 'image/jpeg'를 써요.
+  return c.body(obj.body, 200, { 'Content-Type': obj.httpMetadata?.contentType || 'image/jpeg', 'Cache-Control': 'public, max-age=31536000, immutable' });
 });
 
 // [뜻/역할] 어떤 API에서든 오류가 던져지면(throw) 여기로 모여요. 예상한 오류(입력이 잘못됨 등)는 그 상태 코드로, 나머지는 500으로 보내요.

@@ -10,7 +10,7 @@ import { bad, readJson, isHttp, split, clientIp } from '../util.js';
 // [뜻/역할] 작품 API만 담을 작은 Hono 앱이에요. index.js가 /api/projects 아래에 붙여요. 그래서 여기의 '/'는 실제로 /api/projects예요.
 const projects = new Hono();
 
-// ── 사진 (KV) ───────────────────────────────────────────
+// ── 사진 (R2) ───────────────────────────────────────────
 // [뜻/역할] 사진 검사 기준이에요: 허용하는 종류(jpg·png·webp), 한 장 최대 크기(1.5MB), 최대 장수(5장).
 // [작성 이유] 화면(edit.html)이 올리기 전에 사진 크기를 미리 줄여서 보내요. 서버는 그래도 혹시 모르니 종류·크기·장수만 다시 확인해요.
 //            큰 사진은 저장 공간을 많이 차지하고 화면 로딩도 느리게 만들어서, 줄인 사진만 받는 거예요.
@@ -32,24 +32,25 @@ function pickImages(body) {
   return files;
 }
 
-// [뜻/역할] 사진들을 KV(IMAGES)에 저장하고, 어떤 작품(pid)의 사진인지 D1의 images 표에 기록해요.
-// [비유] KV는 '이름표 붙은 사물함', images 표는 '어느 사물함이 어느 작품 것인지 적은 장부'예요.
-// [문법] IMAGES.put(키, 데이터, { metadata }) — 키 자리에 데이터를 넣고, 사진 종류(type)를 부가 정보로 같이 저장해요.
+// [뜻/역할] 사진들을 R2(IMAGES)에 저장하고, 어떤 작품(pid)의 사진인지 D1의 images 표에 기록해요.
+// [비유] R2는 '파일 창고', images 표는 '창고의 어느 칸이 어느 작품 것인지 적은 장부'예요.
+// [문법] IMAGES.put(키, 데이터, { httpMetadata }) — 키 자리에 파일을 넣고, 사진 종류(contentType)를 같이 적어 둬요.
+//        적어 둔 contentType은 꺼낼 때(index.js의 /uploads) 그대로 돌려받아 브라우저에 알려 줘요.
 //        f.arrayBuffer()는 파일 내용을 바이트 데이터로 읽어요.
 // [작성 이유] 키를 crypto.randomUUID()로 무작위로 만들어서 남이 주소를 짐작할 수 없고, 같은 이름의 파일끼리 겹치지도 않아요.
 async function saveImages(c, pid, files) {
   for (const f of files) {
     const key = crypto.randomUUID();
-    await c.env.IMAGES.put(key, await f.arrayBuffer(), { metadata: { type: f.type } });
+    await c.env.IMAGES.put(key, await f.arrayBuffer(), { httpMetadata: { contentType: f.type } });
     await c.env.DB.prepare('INSERT INTO images (project_id, file) VALUES (?, ?)').bind(pid, key).run();
   }
 }
 
-// [뜻/역할] 한 작품의 사진을 모두 지워요: KV에서 사진 데이터를 지우고, D1의 images 표에서도 기록을 지워요.
-// [작성 이유] 사진 교체(수정)와 작품 삭제에서 같이 써요. KV는 DB의 CASCADE 규칙이 닿지 않으니 직접 지워야 해요.
+// [뜻/역할] 한 작품의 사진을 모두 지워요: R2에서 사진 파일을 지우고, D1의 images 표에서도 기록을 지워요.
+// [작성 이유] 사진 교체(수정)와 작품 삭제에서 같이 써요. R2는 DB의 CASCADE 규칙이 닿지 않으니 직접 지워야 해요.
 async function deleteImages(c, pid) {
   const { results } = await c.env.DB.prepare('SELECT file FROM images WHERE project_id = ?').bind(pid).all();
-  await Promise.all(results.map((i) => c.env.IMAGES.delete(i.file)));
+  if (results.length) await c.env.IMAGES.delete(results.map((i) => i.file));   // 키 배열로 한 번에 지워요
   await c.env.DB.prepare('DELETE FROM images WHERE project_id = ?').bind(pid).run();
 }
 
@@ -192,7 +193,7 @@ projects.put('/:id', needLogin, mine, async (c) => {
   return c.json({ id });
 });
 
-// [뜻/역할] DELETE /api/projects/:id — 작품을 지워요. 사진(KV)을 먼저 지우고 작품 줄을 지우면, 응원·감상은 CASCADE로 같이 지워져요.
+// [뜻/역할] DELETE /api/projects/:id — 작품을 지워요. 사진(R2)을 먼저 지우고 작품 줄을 지우면, 응원·감상은 CASCADE로 같이 지워져요.
 projects.delete('/:id', needLogin, mine, async (c) => {
   const id = c.req.param('id');
   await deleteImages(c, id);

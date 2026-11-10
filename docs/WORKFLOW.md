@@ -31,7 +31,7 @@ flowchart LR
       PR["routes/projects.js<br/>작품·응원·감상"]
     end
     D1[("D1 · SQLite<br/>users · projects · …")]
-    KV[("KV IMAGES<br/>사진")]
+    R2[("R2 p-art-uploads<br/>사진")]
   end
 
   SH["shared/categories.json<br/>분야 목록 (양쪽 공용)"]
@@ -41,7 +41,7 @@ flowchart LR
   J -- "③ fetch('/api/…') JSON" --> IX
   IX --> SE --> AU & PR
   AU & PR --> D1
-  PR --> KV
+  PR --> R2
   SH -.-> IX
   IX -. "/shared/categories.js" .-> J
 ```
@@ -112,7 +112,7 @@ sequenceDiagram
   actor U as 사용자
   participant E as edit.html
   participant P as routes/projects.js
-  participant KV as KV IMAGES
+  participant R2 as R2 p-art-uploads
   participant DB as D1
 
   U->>E: 칸 입력 · 사진 고르기
@@ -124,14 +124,14 @@ sequenceDiagram
   P->>P: readForm(): 길이·주소 검사, 분야는 shared 목록만 남김
   P->>P: pickImages(): 종류·크기·장수 검사
   P->>DB: INSERT projects
-  P->>KV: 사진마다 무작위 키로 저장
+  P->>R2: 사진마다 무작위 키로 저장
   P->>DB: INSERT images (키만)
   P-->>E: { id }
   E-->>U: /kit?id= 로 이동 (홍보 키트)
 ```
 
-- 사진은 KV에, DB에는 **키(이름)만** 있어요. 화면은 `/uploads/키`로 사진을 불러요 → Worker가 KV에서 꺼내 보내요.
-- 사진을 브라우저에서 줄이는 이유: KV 무료 한도(1GB, 하루 쓰기 1,000번)를 아끼고, 휴대폰 사진(5~10MB)도 빨리 올라가게.
+- 사진은 R2에, DB에는 **키(이름)만** 있어요. 화면은 `/uploads/키`로 사진을 불러요 → Worker가 R2에서 꺼내 보내요.
+- 사진을 브라우저에서 줄이는 이유: R2 무료 한도(10GB)를 아끼고, 휴대폰 사진(5~10MB)도 빨리 올라가게.
 
 ### 3-3. ▲ 응원 · 💬 한 줄 감상
 
@@ -210,7 +210,7 @@ erDiagram
   images {
     int id PK
     int project_id FK
-    text file "KV에 저장된 사진 키"
+    text file "R2에 저장된 사진 키"
   }
   likes {
     int user_id PK
@@ -237,7 +237,7 @@ erDiagram
 ```mermaid
 flowchart LR
   subgraph LOCAL["💻 내 컴퓨터"]
-    BR["feature/fe-… 또는<br/>feature/be-… 브랜치"] --> CODE["코드 수정<br/>npm run dev (로컬 D1·KV)"] --> T["npm test"]
+    BR["feature/fe-… 또는<br/>feature/be-… 브랜치"] --> CODE["코드 수정<br/>npm run dev (로컬 D1·R2)"] --> T["npm test"]
   end
   T -- push --> PR["Pull Request → dev"]
   PR --> CI{"GitHub Actions CI<br/>문법 검사 + 테스트 21개"}
@@ -248,7 +248,7 @@ flowchart LR
   CFD --> LIVE["🌐 p-art.swx2.workers.dev"]
 ```
 
-- `npm run dev`는 **내 컴퓨터 안에 가짜 D1·KV**를 만들어서 돌려요. 실제 사이트 데이터는 건드리지 않아요.
+- `npm run dev`는 **내 컴퓨터 안에 가짜 D1·R2**를 만들어서 돌려요. 실제 사이트 데이터는 건드리지 않아요.
 
 브랜치 규칙은 [CONTRIBUTING.md](../CONTRIBUTING.md), 배포 방법은 [DEPLOY.md](DEPLOY.md)에 있어요.
 

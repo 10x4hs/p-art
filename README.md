@@ -7,12 +7,12 @@
 
 - 화면: HTML · CSS · 바닐라 JavaScript (프레임워크 없음)
 - 서버: Cloudflare Workers + [Hono](https://hono.dev)
-- DB: Cloudflare D1 (SQLite) · 사진: Cloudflare KV
+- DB: Cloudflare D1 (SQLite) · 사진: Cloudflare R2
 - 🌐 **https://p-art.swx2.workers.dev** (무료 요금제)
 
 ## 바로 실행하기
 
-Node.js 20 이상이 필요해요. Cloudflare 계정은 **없어도** 돼요 (내 컴퓨터에 가짜 D1·KV를 만들어서 돌려요).
+Node.js 20 이상이 필요해요. Cloudflare 계정은 **없어도** 돼요 (내 컴퓨터에 가짜 D1·R2를 만들어서 돌려요).
 
 ```bash
 npm install
@@ -30,7 +30,7 @@ flowchart LR
   B["🖥️ 브라우저<br/>frontend/"] -- "fetch /api/…" --> W["⚙️ Worker<br/>backend/src/"]
   CF["☁️ Cloudflare 정적 파일"] -- "HTML·CSS·JS" --> B
   W --> D1[("D1<br/>가입·작품·감상")]
-  W --> KV[("KV<br/>사진")]
+  W --> R2[("R2<br/>사진")]
   SH["shared/<br/>분야 목록"] -.-> W
 ```
 
@@ -78,7 +78,7 @@ backend/                  서버 (BE 담당) — Cloudflare Worker
   migrations/             DB 표 구조 (0001_init.sql, 바꿀 땐 0002_… 추가)
 shared/categories.json    분야 목록 (프론트·백엔드 공용)
 scripts/smoke-test.js     npm test
-wrangler.jsonc            Cloudflare 설정 (D1·KV 연결, 정적 파일)
+wrangler.jsonc            Cloudflare 설정 (D1·R2 연결, 정적 파일)
 docs/                     WORKFLOW(그림 설명), DEPLOY(배포), CODE-REVIEW(리뷰 가이드)
 .github/                  CI, 자동 배포, PR 라벨 자동, PR 템플릿
 ```
