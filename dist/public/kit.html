@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>홍보 키트 · PART</title>
+<script>try{if(localStorage.getItem('theme')==='light')document.documentElement.classList.add('light')}catch(e){}</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600;700&family=Noto+Sans+KR:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400&display=swap">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body class="sr">
+<div id="nav"></div>
+<main id="main"></main>
+<div id="foot"></div>
+
+<script src="/shared/categories.js"></script>
+<script src="/js/app.js"></script>
+<script>
+const id = param('id');
+$('#foot').outerHTML = FOOTER;
+
+// 입력한 내용으로 홍보 문구 세 가지를 만든다
+function promos(p) {
+  const url = pageUrl(p.id);
+  return [
+    { kind: '단톡방에 올릴 때', text: `나 이거 만들었어! ${p.title}\n${p.summary}\n${p.target ? p.target + '라면' : '심심하면'} 한 번 눌러 봐\n${url}` },
+    { kind: '인스타 스토리', text: `🎨 PART에 작품을 걸었어요\n「${p.title}」 — ${p.summary}\n▲ 응원 눌러 주면 힘나요!\n${url}` },
+    { kind: '짧게 한 줄', text: `${p.title}: ${p.summary} ${url}` },
+  ];
+}
+
+(async () => {
+  const [, p] = await Promise.all([nav(), api('/api/projects/' + id).catch(() => null)]);
+  if (!p) {
+    $('#main').innerHTML = `<div class="wrap page-top"><div class="empty glass"><p>없거나 비공개인 작품이에요.</p><a class="btn btn-hot" href="/">전시관으로</a></div></div>`;
+    return;
+  }
+  document.title = p.title + ' 홍보 키트 · PART';
+  const list = promos(p);
+  $('#main').innerHTML = `
+  <div class="wrap kit" style="padding-bottom:110px">
+    <div>
+      <p class="mono hud"><i></i>${p.is_public ? 'On view now' : 'Private · 비공개'}</p>
+      <h1 class="h2" style="font-size:clamp(28px,3.2cqi,42px);margin-bottom:12px">걸렸어요.<br><b>이제 알릴 차례.</b></h1>
+      <p style="color:var(--mute);font-weight:300;margin-bottom:28px">링크만 보내면 10명 중 7명은 잘 안 열어 본대요. 사진이랑 문구를 같이 보내 보세요.</p>
+      ${card(p)}
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:18px">
+        <a class="btn btn-hot" href="/project.html?id=${p.id}">작품 페이지</a>
+        <button class="btn" type="button" id="share">주소 복사</button>
+        <a class="btn" href="/works.html">전시관에서 보기</a>
+      </div>
+    </div>
+    <section style="display:flex;flex-direction:column;gap:14px" aria-labelledby="kit-t">
+      <p class="mono">Promo kit</p>
+      <h2 id="kit-t" style="font-size:22px;font-weight:400;letter-spacing:-.03em">홍보 문구</h2>
+      <p style="color:var(--mute);font-weight:300;margin-bottom:6px">입력한 내용으로 만들었어요. 복사해서 바로 붙여 넣으면 돼요.</p>
+      ${list.map((m, i) => `<div class="copy glass">
+        <div class="copy-h"><span class="mono">${esc(m.kind)}</span><button class="btn" type="button" style="min-height:36px;padding:0 16px;font-size:13px" data-copy="${i}">복사</button></div>
+        <pre>${esc(m.text)}</pre></div>`).join('')}
+    </section>
+  </div>`;
+  $('#share').onclick = () => copyText(pageUrl(p.id), '작품 주소를 복사했어요');
+  $('#main').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-copy]'); if (!b) return;
+    copyText(list[b.dataset.copy].text, '홍보 문구를 복사했어요');
+    $$('[data-copy]').forEach((x) => (x.textContent = x === b ? '복사됨 ✓' : '복사'));
+  });
+})();
+</script>
+</body>
+</html>

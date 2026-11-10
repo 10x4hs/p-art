@@ -10,7 +10,7 @@ PART는 **Cloudflare 무료 요금제**에서 돌아가요.
 | 서버 (API) | Workers | `p-art` |
 | 화면 파일 | Workers 정적 파일 (Static Assets) | `frontend/` 폴더 |
 | DB | D1 (SQLite) | `p-art` |
-| 사진 | KV | `IMAGES` |
+| 사진 | R2 | 버킷 `p-art-uploads` (코드에서는 `IMAGES`) |
 
 ```mermaid
 flowchart LR
@@ -19,7 +19,7 @@ flowchart LR
   MIG --> DEP["wrangler deploy"]
   DEP --> LIVE["🌐 p-art.swx2.workers.dev"]
   LIVE <--> D1[("D1 p-art<br/>가입·작품·감상")]
-  LIVE <--> KV[("KV IMAGES<br/>사진")]
+  LIVE <--> R2[("R2 p-art-uploads<br/>사진")]
   T -- 실패 --> STOP["배포 안 함<br/>(지금 사이트 그대로)"]
 ```
 
@@ -31,8 +31,8 @@ flowchart LR
 | Workers CPU | 요청당 10ms | 그래서 비밀번호를 PBKDF2(빠른 기본 기능)로 암호화 |
 | D1 읽기 / 쓰기 | 500만 줄 / 10만 줄 | 목록·가입·감상 |
 | D1 저장 | 5GB | |
-| KV 쓰기 | **1,000번** | **사진 한 장 = 1번** → 하루 사진 약 1,000장까지 |
-| KV 저장 | 1GB | 사진은 브라우저에서 줄여서(장당 약 100~300KB) 올림 |
+| R2 쓰기 | 월 100만 번 | 사진 한 장 = 1번 |
+| R2 저장 | 10GB | 사진은 브라우저에서 줄여서(장당 약 100~300KB) 올림 |
 
 학교 규모에서는 넉넉해요. 한도를 넘으면 그날만 해당 기능이 오류를 내고, 다음 날 다시 돼요.
 
@@ -40,7 +40,7 @@ flowchart LR
 
 ## 이미 해 둔 것
 
-1. Cloudflare 계정에 D1 `p-art`, KV `IMAGES`를 만들었어요. 둘의 id는 `wrangler.jsonc`에 들어 있어요(비밀값 아님).
+1. Cloudflare 계정에 D1 `p-art`와 R2 버킷 `p-art-uploads`를 만들었어요. 이름·id는 `wrangler.jsonc`에 들어 있어요(비밀값 아님).
 2. DB 표를 만들었어요(`backend/migrations/0001_init.sql`).
 3. 첫 배포를 해서 https://p-art.swx2.workers.dev 가 열려요.
 
@@ -87,5 +87,5 @@ npm run deploy         # DB 표 업데이트 + 배포
 |---|---|
 | GitHub Actions의 Deploy가 빨간 X, `Authentication error` | `CLOUDFLARE_API_TOKEN` 시크릿과 D1 Edit 권한 |
 | 로그인이 계속 풀림 | 주소가 `https://`인지 (쿠키는 https에서만 안전 모드로 저장) |
-| 사진이 안 올라감 + `KV put() limit exceeded` | 오늘 KV 쓰기 1,000번을 다 씀 → 내일 다시 |
+| 사진이 안 보이고 `/uploads/…`가 404 | `wrangler.jsonc`의 `r2_buckets`가 `p-art-uploads`인지, `npx wrangler r2 bucket list`에 버킷이 있는지 |
 | `Error 1102: Worker exceeded resource limits` | CPU 10ms 초과 → `wrangler tail`로 어느 API인지 확인 |

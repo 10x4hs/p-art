@@ -98,16 +98,16 @@ auth.put('/me', needLogin, async (c) => {
 });
 
 // [뜻/역할] DELETE /api/me — 회원 탈퇴예요.
-// [작성 이유] KV에 있는 사진은 DB가 자동으로 지워 주지 못하니 먼저 직접 지워요. 그다음 users 줄을 지우면,
+// [작성 이유] R2에 있는 사진은 DB가 자동으로 지워 주지 못하니 먼저 직접 지워요. 그다음 users 줄을 지우면,
 //            작품·응원·세션은 DB의 ON DELETE CASCADE 규칙(0001_init.sql) 덕분에 같이 지워져요.
 auth.delete('/me', needLogin, async (c) => {
   const uid = c.get('uid');
   // [뜻/역할] 내 작품들에 달린 사진 키를 모두 찾아요.
   // [문법] JOIN은 두 표를 조건(p.id = i.project_id)으로 이어 붙여요. .all()은 여러 줄을 { results: [...] }로 가져와요.
   const { results } = await c.env.DB.prepare('SELECT i.file FROM images i JOIN projects p ON p.id = i.project_id WHERE p.user_id = ?').bind(uid).all();
-  // [뜻/역할] KV(IMAGES)에서 사진들을 한꺼번에 지워요.
-  // [문법] Promise.all([...])은 여러 비동기 작업을 동시에 시작하고 모두 끝날 때까지 기다려요.
-  await Promise.all(results.map((i) => c.env.IMAGES.delete(i.file)));
+  // [뜻/역할] R2(IMAGES)에서 사진들을 한꺼번에 지워요.
+  // [문법] R2의 delete()는 키 배열을 받으면 여러 개를 한 번에 지워요. 사진이 없으면(빈 배열) 부를 필요가 없어서 건너뛰어요.
+  if (results.length) await c.env.IMAGES.delete(results.map((i) => i.file));
   await c.env.DB.prepare('DELETE FROM users WHERE id = ?').bind(uid).run();
   await endSession(c);
   return c.json({ ok: true });

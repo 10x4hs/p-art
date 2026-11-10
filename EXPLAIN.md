@@ -12,10 +12,10 @@
   - `frontend/` = **홀** (손님이 보는 메뉴판·테이블) — HTML, CSS, 브라우저 JS
   - `backend/src/` = **주방** (주문을 받아 요리하고 창고에서 재료를 꺼냄) — Cloudflare Worker
   - **D1** = **장부 창고** (가입 정보·작품·감상) — SQLite 데이터베이스
-  - **KV** = **사진 창고** — 키(이름표)로 사진을 넣고 꺼내는 보관함
+  - **R2** = **사진 창고** — 키(이름표)로 사진 파일을 넣고 꺼내는 보관함
   - `fetch('/api/...')` = **주문서** — 홀이 주방에 보내는 요청
   - **Cloudflare** = 건물 전체를 빌려주는 회사. 손님이 오면 메뉴판(화면 파일)은 입구에서 바로 주고, 주문(`/api/…`)만 주방으로 보내요.
-- **입력과 출력**: 사용자가 이메일·작품 정보·사진을 넣으면 → Worker가 검사해서 D1·KV에 저장하고 → 화면은 저장된 작품을 카드로 보여 줘요.
+- **입력과 출력**: 사용자가 이메일·작품 정보·사진을 넣으면 → Worker가 검사해서 D1·R2에 저장하고 → 화면은 저장된 작품을 카드로 보여 줘요.
 
 ---
 
@@ -32,7 +32,7 @@
 | 7단계 | `index.html`의 `list()` | `fetch('/api/projects?sort=hot')`로 작품 목록을 주문해요 |
 | 8단계 | `routes/projects.js`의 `GET /` | SQL 한 번으로 작품 + 작성자 + 사진 + 응원 수를 꺼내요 |
 | 9단계 | `app.js`의 `card()` | JSON을 카드 HTML로 바꿔 화면에 끼워 넣어요 |
-| 10단계 | `<img src="/uploads/키">` | Worker가 KV에서 사진을 꺼내 보내요 |
+| 10단계 | `<img src="/uploads/키">` | Worker가 R2에서 사진을 꺼내 보내요 |
 
 ---
 
@@ -48,7 +48,7 @@
 | `` `글자 ${값}` `` | **템플릿 문자열** — 글자 안에 값 끼우기 | `` `pbkdf2$${ITERATIONS}$…` `` | 따옴표가 아니라 백틱(`) |
 | `async` / `await` | 오래 걸리는 일(DB, 네트워크)이 **끝날 때까지 기다리기** | `await c.env.DB.prepare(…).first()` | D1은 전부 `await`가 필요해요 |
 | `c` (Hono) | 요청 하나에 대한 **모든 것이 든 상자** | `c.req.param('id')`, `c.json(…)`, `c.env.DB` | Express의 `req` + `res`를 합친 것 |
-| `c.env` | Cloudflare가 연결해 준 **자원** | `c.env.DB`(D1), `c.env.IMAGES`(KV) | 이름은 `wrangler.jsonc`의 `binding` |
+| `c.env` | Cloudflare가 연결해 준 **자원** | `c.env.DB`(D1), `c.env.IMAGES`(R2) | 이름은 `wrangler.jsonc`의 `binding` |
 | `c.get` / `c.set` | 요청 하나 동안 쓰는 **메모장** | `c.set('uid', 3)` → `c.get('uid')` | 다음 요청엔 사라져요 |
 | 미들웨어 | 요청이 지나가는 **검문소** `(c, next) => …` | `needLogin`, `mine` | 통과시키려면 `await next()` |
 | `throw` | 오류를 **던져서** 지금 일을 멈추기 | `throw bad('제목은 1~40자예요')` | `index.js`의 `onError`가 받아요 |
@@ -76,7 +76,7 @@
                                           // ⑤ 이 주소들은 파일을 찾기 전에 Worker가 먼저 처리
 },
 "d1_databases": [{ "binding": "DB", … }], // ⑥ D1을 코드에서 c.env.DB 라는 이름으로 쓰게 연결
-"kv_namespaces": [{ "binding": "IMAGES", … }]  // ⑦ KV를 c.env.IMAGES 로 연결
+"r2_buckets": [{ "binding": "IMAGES", … }]     // ⑦ R2 버킷을 c.env.IMAGES 로 연결
 ```
 
 ### 4-2. `backend/src/index.js` — 서버의 시작점 (조립하는 곳)
@@ -101,10 +101,10 @@ app.get('/shared/categories.js', (c) =>              // ⑪ 브라우저용 분�
                                                      //    왜? 서버와 화면이 같은 JSON 파일 하나를 쓰게 하려고
 
 app.get('/uploads/:key', async (c) => {              // ⑫ 사진 주소. :key 자리에 사진 이름이 들어옴
-  const { value, metadata } = await c.env.IMAGES.getWithMetadata(c.req.param('key'), 'arrayBuffer');
-                                                     // ⑬ KV에서 사진 내용(바이트)과 메모(종류)를 꺼냄
-  if (!value) return c.notFound();                   // ⑭ 없으면 404
-  return c.body(value, 200, { 'Content-Type': metadata?.type || 'image/jpeg', 'Cache-Control': 'public, max-age=31536000, immutable' });
+  const obj = await c.env.IMAGES.get(c.req.param('key'));
+                                                     // ⑬ R2에서 사진 파일(내용 + 저장할 때 적어 둔 종류)을 꺼냄
+  if (!obj) return c.notFound();                     // ⑭ 없으면 404
+  return c.body(obj.body, 200, { 'Content-Type': obj.httpMetadata?.contentType || 'image/jpeg', 'Cache-Control': 'public, max-age=31536000, immutable' });
                                                      // ⑮ 사진을 보내면서 "1년 동안 저장해 둬도 돼" — 키가 절대 안 바뀌니까
 });
 
@@ -237,7 +237,7 @@ async function shrink(file, max = 1600) {
                                                                    // ⑦ JPEG(품질 82%) 파일로 만들어 돌려줌
 }
 ```
-**왜?** 휴대폰 사진은 5~10MB예요. 사진 창고(KV) 무료 한도가 1GB라 그대로 올리면 금방 차요. 줄이면 장당 100~300KB.
+**왜?** 휴대폰 사진은 5~10MB예요. 사진 창고(R2) 무료 한도가 10GB라도 그대로 올리면 금방 차고, 올리는 데도 오래 걸려요. 줄이면 장당 100~300KB.
 
 ### 4-8. `frontend/js/app.js` — 화면 공통 함수 (핵심만)
 
@@ -272,7 +272,7 @@ document.addEventListener('click', async (e) => {
 - **Q1. 왜 React 같은 프레임워크 대신 바닐라 JS?**
   설치·빌드 없이 HTML 파일이 바로 보이고, 수행평가 요구(HTML·CSS·JS)에 맞아요. 공통 부분은 `app.js`에 모았어요.
 - **Q2. 왜 Cloudflare?**
-  카드 없이 무료이고, 서버가 쉬어도 데이터(D1·KV)가 남아요. Railway는 무료 체험이 끝났고, Render 무료는 재배포 때 데이터가 사라져요.
+  카드 없이 무료이고, 서버가 쉬어도 데이터(D1·R2)가 남아요. Railway는 무료 체험이 끝났고, Render 무료는 재배포 때 데이터가 사라져요.
 - **Q3. 화면에서 검사했는데 서버에서 또 검사하는 이유는?**
   화면 JS는 개발자 도구로 누구나 고칠 수 있어요. **진짜 문지기는 서버**예요. 화면 검사는 "빨리 알려 주기"용.
 - **Q4. `esc()`를 빼먹으면?**

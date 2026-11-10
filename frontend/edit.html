@@ -126,7 +126,7 @@ function bad(input, msg) {
 // [문법] createImageBitmap(file)로 사진을 그림 데이터로 읽고, 보이지 않는 <canvas>(그림판)에 줄인 크기로 다시 그린 뒤,
 //        canvas.toBlob(콜백, 'image/jpeg', 0.82)로 품질 82%의 JPEG 파일 데이터(Blob)를 만들어요. toBlob은 콜백 방식이라 new Promise로 감싸서 await할 수 있게 했어요.
 //        max = 1600 은 값을 안 넘기면 1600을 쓰는 기본 매개변수예요. Math.min(1, ...) 덕분에 원래 작은 사진은 키우지 않아요.
-// [작성 이유] 저장 공간(Cloudflare KV)을 아끼고, 휴대폰 사진(5~10MB)도 빨리 올라가게 하려고요. 서버(projects.js)는 줄인 사진 기준으로 장당 1.5MB까지만 받아요.
+// [작성 이유] 저장 공간(Cloudflare R2)을 아끼고, 휴대폰 사진(5~10MB)도 빨리 올라가게 하려고요. 서버(projects.js)는 줄인 사진 기준으로 장당 1.5MB까지만 받아요.
 async function shrink(file, max = 1600) {
   const img = await createImageBitmap(file);
   const scale = Math.min(1, max / Math.max(img.width, img.height));
