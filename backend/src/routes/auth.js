@@ -2,14 +2,17 @@
 import { Hono } from 'hono';
 import { hashPassword, checkPassword } from '../password.js';
 import { startSession, endSession, needLogin } from '../session.js';
-import { bad, readJson } from '../util.js';
+import { bad, readJson, isAdminEmail } from '../util.js';
 
 const auth = new Hono();
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const cleanEmail = (e) => String(e || '').trim().toLowerCase();   // Test@A.com 과 test@a.com 을 같은 사람으로
-// password 열은 빼고 보여 줘도 되는 열만 가져와요.
-const me = (c, id) => c.env.DB.prepare('SELECT id, email, nickname, bio FROM users WHERE id = ?').bind(id).first();
+// password 열은 빼고 보여 줘도 되는 열만 가져와요. isAdmin이면 상단 메뉴에 '관리'가 보여요.
+const me = async (c, id) => {
+  const u = await c.env.DB.prepare('SELECT id, email, nickname, bio FROM users WHERE id = ?').bind(id).first();
+  return u && { ...u, isAdmin: isAdminEmail(c, u.email) };
+};
 const cleanNickname = (body) => {
   const nickname = String(body.nickname || '').trim();
   if (nickname.length < 2 || nickname.length > 20) throw bad('닉네임은 2~20자예요');
@@ -64,6 +67,14 @@ auth.delete('/me', needLogin, async (c) => {
   await c.env.DB.prepare('DELETE FROM users WHERE id = ?').bind(uid).run();
   await endSession(c);
   return c.json({ ok: true });
+});
+
+// 팀원 고르기용 닉네임 검색이에요. 번호와 닉네임만, 10명까지 보내요.
+auth.get('/users', needLogin, async (c) => {
+  const q = String(c.req.query('q') || '').trim();
+  if (!q || q.length > 20) throw bad('닉네임을 1~20자로 적어 주세요');
+  const { results } = await c.env.DB.prepare('SELECT id, nickname FROM users WHERE nickname LIKE ? ORDER BY nickname LIMIT 10').bind(`%${q}%`).all();
+  return c.json(results);
 });
 
 // 남의 공개 프로필이에요. 이메일은 보여 주지 않아요.

@@ -1,9 +1,20 @@
 <!doctype html>
-<!-- [파일 개요] 작품 상세(/project.html?id=번호): 소개, 응원, 만든 이야기, 화면 사진, 방명록, 내 작품이면 고치기·내리기. -->
+<!-- [파일 개요] 작품 상세(/project.html?id=번호): 소개, 응원·북마크, 사이트 미리보기, 만든 이야기, 화면 사진, 방명록, 신고. 내 작품이면 통계·고치기·내리기. -->
 <html lang="ko">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>작품 · PART</title>
+<!-- 공유 미리보기 기본값. 작품 페이지는 서버(backend/src/og.js)가 작품마다 바꿔 보내요. -->
+<meta name="description" content="수행평가로 만든 웹페이지·게임·도구를 링크 대신 작품처럼 걸어 두는 학생 전시관이에요.">
+<meta property="og:type" content="website"><meta property="og:site_name" content="PART">
+<meta property="og:title" content="PART · 학생 작품 전시관">
+<meta property="og:description" content="수행평가로 만든 웹페이지·게임·도구를 링크 대신 작품처럼 걸어 두는 학생 전시관이에요.">
+<meta property="og:image" content="https://p-art.swx2.workers.dev/img/hero.jpg">
+<meta property="og:url" content="https://p-art.swx2.workers.dev/project.html">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="PART · 학생 작품 전시관">
+<meta name="twitter:description" content="수행평가로 만든 웹페이지·게임·도구를 링크 대신 작품처럼 걸어 두는 학생 전시관이에요.">
+<meta name="twitter:image" content="https://p-art.swx2.workers.dev/img/hero.jpg">
 <script>try{if(localStorage.getItem('theme')==='light')document.documentElement.classList.add('light')}catch(e){}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600;700&family=Noto+Sans+KR:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400&display=swap">
@@ -17,8 +28,12 @@
 <script src="/js/app.js"></script>
 <script>
 const id = param('id');
+const meP = nav(); // 로그인한 사람(없으면 null)
+
+const bmLabel = (on) => (on ? '★ 북마크됨' : '☆ 북마크'); // 켜지면 ★로 바뀌어요
 
 async function load() {
+  const me = await meP;
   // 없거나 남의 비공개 작품이면 null이 돼요.
   const p = await api('/api/projects/' + id).catch(() => null);
   if (!p) return ($('#main').innerHTML = `<div class="wrap page-top">${notFound('없거나 비공개인 작품이에요.')}</div>`);
@@ -34,15 +49,25 @@ async function load() {
       <div class="d-panel glass">
         <a class="nav-link" href="/works.html" style="align-self:flex-start;padding-left:0">← 전시관</a>
         <p class="mono">${esc(p.cats.join(' · ') || '작품')}${p.is_public ? '' : ' · 비공개'}</p>
+        ${p.hidden ? '<p class="form-msg">⚠ 숨김 처리됨 — 신고가 쌓여 전시관에서 가려졌어요. 관리자가 확인하면 다시 보여요.</p>' : ''}
         <h1>${esc(p.title)}</h1>
         <p style="font-size:16px;font-weight:300;color:var(--ink)">${esc(p.summary)}</p>
         <p class="mono">by ${esc(makerOf(p))}</p>
         <div style="display:flex;gap:10px;flex-wrap:wrap">
           <a class="btn btn-hot" href="${esc(p.url)}" target="_blank" rel="noopener">바로 해 보기 <span class="arr" aria-hidden="true">↗</span></a>
           ${upBtn(p, true)}
+          <button class="btn" type="button" id="bm" aria-pressed="${p.bookmarked}">${bmLabel(p.bookmarked)}</button>
+          <button class="btn" type="button" id="pvBtn" aria-expanded="false" aria-controls="pv">미리보기</button>
           <button class="btn" type="button" id="share">주소 복사</button>
+          ${me && !p.mine ? '<button class="btn btn-danger" type="button" id="report">신고</button>' : ''}
         </div>
-        ${p.mine ? `<div class="owner">
+        ${p.mine ? `<div class="stats" aria-label="내 작품 통계">
+          <div><b>${p.views}</b><span>조회</span></div>
+          <div><b data-cheers="${p.id}">${p.likes}</b><span>응원</span></div>
+          <div><b>${p.comments}</b><span>감상</span></div>
+          <div><b id="bmCount">${p.bookmarks}</b><span>북마크</span></div>
+        </div>
+        <div class="owner">
           <a class="btn" href="/kit.html?id=${p.id}">홍보 키트</a>
           <a class="btn" href="/edit.html?id=${p.id}">고치기</a>
           <button class="btn btn-danger" type="button" id="del">내리기</button></div>` : ''}
@@ -52,6 +77,7 @@ async function load() {
 
   <div class="wrap sec d-grid">
     <div>
+      <section class="site-pv hide" id="pv" style="margin-bottom:56px" aria-label="사이트 미리보기"></section>
       <section class="d-sec"><h2 class="mono">Story · 만든 이야기</h2><p class="quote">${p.detail ? esc(p.detail).replace(/\n/g, '<br>') : '<span style="color:var(--dim)">아직 쓰지 않았어요.</span>'}</p></section>
       <section class="d-sec"><h2 class="mono">For · 이런 친구한테 추천</h2><p class="quote" style="color:var(--mute)">${esc(p.target || '누구나')}</p></section>
       ${p.images.length > 1 ? `<section class="d-sec"><h2 class="mono">Screens · 화면</h2><div class="shots">${p.images.map((s) => `<a href="${esc(s)}" target="_blank" rel="noopener"><img src="${esc(s)}" alt="${esc(p.title)} 화면" loading="lazy"></a>`).join('')}</div></section>` : ''}
@@ -72,6 +98,7 @@ async function load() {
       <div class="row"><span>분야</span><span>${esc(p.cats.join(', ') || '—')}</span></div>
       <div class="row"><span>만든 사람</span><span>${esc(makerOf(p))}</span></div>
       <div class="row"><span>올린 사람</span><span><a href="/profile.html?id=${p.user_id}">${esc(p.author)}</a></span></div>
+      ${p.members.length ? `<div class="row"><span>함께 만든 사람</span><span class="mates">${p.members.map((m) => `<a href="/profile.html?id=${m.id}">${esc(m.nickname)}</a>`).join('')}</span></div>` : ''}
       ${p.github ? `<div class="row"><span>코드</span><span><a href="${esc(p.github)}" target="_blank" rel="noopener">GitHub ↗</a></span></div>` : ''}
       ${p.tags.length ? `<div class="tech" aria-label="기술">${p.tags.map((t) => `<span>${esc(t)}</span>`).join('')}</div>` : ''}
       <p style="color:var(--dim);font-size:13px">친구한테 보낼 땐 링크보다 이 페이지 주소가 더 잘 눌려요.</p>
@@ -84,6 +111,30 @@ async function load() {
   </section>` : '<div style="height:80px"></div>'}`;
 
   $('#share').onclick = () => copyText(pageUrl(p.id), '작품 주소를 복사했어요');
+  // 미리보기는 누를 때만 iframe을 만들어요(안 누르면 남의 사이트를 불러오지 않아요).
+  $('#pvBtn').onclick = () => {
+    const box = $('#pv'), open = !box.classList.toggle('hide');
+    $('#pvBtn').setAttribute('aria-expanded', open);
+    if (open && !box.innerHTML) box.innerHTML = `<h2 class="mono">Preview · 사이트 미리보기</h2>
+      <iframe src="${esc(p.url)}" title="${esc(p.title)} 미리보기" loading="lazy" referrerpolicy="no-referrer" sandbox="allow-scripts allow-forms allow-same-origin allow-popups"></iframe>
+      <p>사이트가 미리보기를 막으면 '바로 해 보기'로 열어 주세요.</p>`;
+    if (open) box.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+  $('#bm').onclick = async () => {
+    try {
+      const r = await api(`/api/projects/${p.id}/bookmark`, 'POST');
+      $('#bm').setAttribute('aria-pressed', r.bookmarked);
+      $('#bm').textContent = bmLabel(r.bookmarked);
+      if ($('#bmCount')) $('#bmCount').textContent = r.bookmarks;
+      toast(r.bookmarked ? '북마크했어요. 내 프로필에서 모아 볼 수 있어요' : '북마크를 뺐어요');
+    } catch (err) { if (err.status === 401) { toast('로그인하면 북마크할 수 있어요'); setTimeout(toLogin, 900); } else toast(err.message); }
+  };
+  $('#report')?.addEventListener('click', async () => {
+    const reason = prompt('신고하는 까닭을 짧게 적어 주세요 (100자까지)');
+    if (reason === null) return;
+    try { await api(`/api/projects/${p.id}/report`, 'POST', { reason }); toast('신고했어요. 관리자가 살펴볼게요'); }
+    catch (err) { toast(err.message); }
+  });
   $('#del')?.addEventListener('click', async () => {
     if (!confirm('작품을 내릴까요? 사진과 감상도 함께 지워져요.')) return;
     await api('/api/projects/' + p.id, 'DELETE');
@@ -117,7 +168,7 @@ $('#main').addEventListener('click', async (e) => {
   guests();
 });
 
-nav(); load();
+load();
 </script>
 </body>
 </html>

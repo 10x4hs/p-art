@@ -7,11 +7,15 @@
   "compatibility_date": "2025-09-01",
 
   // 화면 파일은 frontend/에서 바로 보내고, run_worker_first 주소만 Worker(backend)가 처리해요.
+  // /project·/project.html은 공유 미리보기(og 태그)를 작품마다 바꾸려고 Worker가 먼저 받아요(backend/src/og.js).
   "assets": {
     "directory": "./frontend",
     "binding": "ASSETS",
-    "run_worker_first": ["/api/*", "/uploads/*", "/shared/*"]
+    "run_worker_first": ["/api/*", "/uploads/*", "/shared/*", "/project", "/project.html"]
   },
+
+  // 관리자 이메일(쉼표로 구분). 비워 두면 관리자가 없어요. 배포 값은 docs/DEPLOY.md를 보세요.
+  "vars": { "ADMIN_EMAILS": "" },
 
   // DB(D1, SQLite) — 코드에서 c.env.DB로 써요. id는 비밀값이 아니에요.
   "d1_databases": [{ "binding": "DB", "database_name": "p-art", "database_id": "df14cf96-6d63-4752-b6e4-948a5d299880", "migrations_dir": "backend/migrations" }],

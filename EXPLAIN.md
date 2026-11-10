@@ -265,6 +265,18 @@ document.addEventListener('click', async (e) => {
 // ⑧ 버튼마다 연결하지 않고 문서 전체에 하나만 (이벤트 위임) → 나중에 그려진 카드도 자동으로 동작
 ```
 
+### 4-9. 나중에 더한 기능 (`0002_features.sql`)
+
+| 기능 | 어디에 | 한 줄 설명 |
+|---|---|---|
+| 팀원 | `project_members` 표, `GET /api/users?q=`, `edit.html` | 닉네임으로 찾아 최대 5명. 폼에 `members=3,7`로 보내면 서버가 통째로 바꿔요 |
+| 임시 저장 | `edit.html`의 `saveDraft()` | 글자 칸만 `localStorage`(`part-draft:new` 또는 `part-draft:번호`)에. 저장 성공하면 지워요 |
+| 사이트 미리보기 | `project.html`의 `#pvBtn` | 누를 때만 `sandbox` iframe을 만들어요 |
+| 북마크 | `bookmarks` 표, `POST /api/projects/:id/bookmark` | 응원과 같은 `toggle()`을 써요. `?bookmarked=1`로 내 북마크만 |
+| 공유 미리보기 | `backend/src/og.js` | `/project.html`은 Worker가 먼저 받아 `HTMLRewriter`로 og 태그를 작품 값으로 바꿔요 |
+| 전시 통계 | `projects.views` | 주인이 아닌 사람이 상세를 열면 +1 |
+| 신고·숨김 | `reports` 표, `projects.hidden`, `routes/admin.js` | 3명이 신고하면 숨김. 관리자(`ADMIN_EMAILS`)가 되살리거나 신고를 지워요 |
+
 ---
 
 ## 5. 왜 이렇게 코드를 작성했을까요? (작성 이유와 꿀팁)
@@ -291,7 +303,7 @@ document.addEventListener('click', async (e) => {
 ```bash
 npm install        # 필요한 라이브러리 설치 (처음 한 번)
 npm run dev        # 내 컴퓨터에서 켜기 → http://localhost:8787
-npm test           # 자동 확인 21가지
+npm test           # 자동 확인 59가지
 ```
 
 실행 결과 예시 (`npm test`):
@@ -302,7 +314,7 @@ npm test           # 자동 확인 21가지
 ✓ 작품 등록 + 사진 저장
 ✓ 남의 작품 삭제 거절
 …
-모두 통과 (21개)
+모두 통과 (59개)
 ```
 
 ### 연습 문제

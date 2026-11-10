@@ -78,7 +78,7 @@ docs: 배포 방법 추가
 
 ```bash
 npm run check   # 모든 JS 문법 검사
-npm test        # 로컬 Cloudflare(D1·R2)를 띄워 가입~탈퇴까지 21가지 확인
+npm test        # 로컬 Cloudflare(D1·R2)를 띄워 가입~탈퇴까지 59가지 확인
 ```
 
 CI(GitHub Actions)도 같은 두 명령을 돌려요. 빨간 X가 뜨면 머지할 수 없어요.

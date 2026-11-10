@@ -14,7 +14,7 @@ PART는 **Cloudflare 무료 요금제**에서 돌아가요.
 
 ```mermaid
 flowchart LR
-  GH["GitHub main 브랜치"] -- "push 하면 자동<br/>(.github/workflows/deploy.yml)" --> T["npm test<br/>21가지 확인"]
+  GH["GitHub main 브랜치"] -- "push 하면 자동<br/>(.github/workflows/deploy.yml)" --> T["npm test<br/>59가지 확인"]
   T -- 통과 --> MIG["npm run db:remote<br/>DB 표 업데이트"]
   MIG --> DEP["wrangler deploy"]
   DEP --> LIVE["🌐 p-art.swx2.workers.dev"]
@@ -73,6 +73,14 @@ npm run deploy         # DB 표 업데이트 + 배포
 1. `backend/migrations/`에 **새 파일**을 만들어요: `0002_무엇을.sql` (기존 파일은 고치지 않아요)
 2. `npm run dev`를 실행하면 내 컴퓨터 DB에 먼저 적용돼요.
 3. main에 머지하면 배포할 때 실제 DB에도 적용돼요(`npm run db:remote`).
+
+## 관리자 지정 (ADMIN_EMAILS)
+
+신고를 살펴보는 `/admin.html`은 **이메일이 `ADMIN_EMAILS`에 있는 회원**만 열 수 있어요. 여러 명이면 쉼표로 이어요.
+
+- `wrangler.jsonc`의 `"vars": { "ADMIN_EMAILS": "" }`에 적고 배포하면 돼요. 예: `"teacher@school.kr,pm@school.kr"`
+- 저장소에 이메일을 남기기 싫으면 비워 두고, 대시보드 → Workers → `p-art` → Settings → Variables에서 넣어요. (이때는 배포가 대시보드 값을 지우지 않게 `wrangler.jsonc`에 `"keep_vars": true`를 더하고 `vars`의 `ADMIN_EMAILS` 줄은 빼요.)
+- 내 컴퓨터에서는 `.dev.vars` 파일에 `ADMIN_EMAILS=me@test.com` 한 줄을 쓰면 돼요(`.gitignore`에 들어 있어요). `npm test`는 `--var`로 따로 넣어요.
 
 ## 확인 · 문제 해결
 
