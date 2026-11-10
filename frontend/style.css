@@ -277,3 +277,26 @@ a.btn-hot,a.btn-hot:hover{color:var(--bg)}
 .auth-page footer{position:relative;padding-bottom:40px;font-size:14px;color:rgba(255,255,255,.88);display:flex;gap:8px;align-items:center}
 .auth-page footer a{color:#fff;text-underline-offset:4px}
 @media (max-width:640px){.big-pill{min-height:68px;padding-left:22px}.big-pill input{font-size:18px}}
+
+/* 사이트 미리보기 · 통계 · 팀원 · 관리 */
+.site-pv{display:flex;flex-direction:column;gap:10px}
+.site-pv iframe{width:100%;height:min(70vh,640px);border:1px solid var(--line);border-radius:18px;background:var(--field)}
+.site-pv p{color:var(--dim);font-size:13px}
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.stats div{border:1px solid var(--line);border-radius:14px;padding:10px 12px;display:flex;flex-direction:column}
+.stats b{font-size:20px;font-weight:600;letter-spacing:-.02em}
+.stats span{color:var(--mute);font-size:12.5px}
+.tbl{overflow-x:auto;border-radius:22px;padding:8px 18px}
+.tbl table{width:100%;border-collapse:collapse;font-size:14px}
+.tbl th,.tbl td{padding:12px 8px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+.tbl th{color:var(--mute);font-weight:400}
+.tbl th:first-child,.tbl td:first-child{text-align:left;white-space:normal;overflow-wrap:anywhere}
+.tbl tr:last-child td{border-bottom:0}
+.mates{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:4px 10px}
+.draft{display:flex;align-items:center;gap:10px;flex-wrap:wrap;border-radius:16px;padding:10px 16px;font-size:13.5px;color:var(--mute)}
+.draft button{border:0;background:none;color:var(--accent);padding:4px 6px;font-size:13.5px}
+.reps{display:flex;flex-direction:column;gap:14px}
+.rep{border-radius:22px;padding:22px;display:flex;flex-direction:column;gap:12px}
+.rep-t{font-size:20px;font-weight:600;letter-spacing:-.03em;overflow-wrap:anywhere}
+.rep-why{margin:0;padding-left:18px;color:var(--mute);font-weight:300;overflow-wrap:anywhere}
+@container (max-width:640px){.stats{grid-template-columns:repeat(2,minmax(0,1fr))}}

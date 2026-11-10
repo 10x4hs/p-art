@@ -13,3 +13,14 @@ export const isHttp = (u) => /^https?:\/\/\S+$/.test(u);
 export const split = (v) => (v ? v.split(',') : []);
 // 감상 도배 방지용 IP예요. 로컬에선 헤더가 없어서 'local'이에요.
 export const clientIp = (c) => c.req.header('cf-connecting-ip') || 'local';
+
+// 관리자 = 이메일이 ADMIN_EMAILS(쉼표로 구분, wrangler.jsonc의 vars)에 들어 있는 회원이에요.
+export const isAdminEmail = (c, email) =>
+  String(c.env.ADMIN_EMAILS || '').toLowerCase().split(',').map((e) => e.trim()).filter(Boolean).includes(email);
+
+// 지금 로그인한 사람이 관리자인지 확인해요.
+export async function isAdmin(c) {
+  if (!c.get('uid')) return false;
+  const u = await c.env.DB.prepare('SELECT email FROM users WHERE id = ?').bind(c.get('uid')).first();
+  return !!u && isAdminEmail(c, u.email);
+}
