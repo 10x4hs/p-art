@@ -1,9 +1,8 @@
 <!doctype html>
-<!-- [파일 개요] 프로필 페이지(/profile.html?id=회원번호) — 내 프로필이면 닉네임·소개 수정, 로그아웃, 회원 탈퇴 폼과 내 작품(비공개 포함)을 보여 주고, 다른 사람 프로필이면 이름·소개와 공개 작품들을 보여 줘요. -->
+<!-- [파일 개요] 프로필(/profile.html?id=회원번호): 내 프로필이면 정보 수정·로그아웃·탈퇴, 남의 프로필이면 이름·소개와 작품을 보여 줘요. -->
 <html lang="ko">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>프로필 · PART</title>
 <script>try{if(localStorage.getItem('theme')==='light')document.documentElement.classList.add('light')}catch(e){}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -19,22 +18,16 @@
 </main>
 <div id="foot"></div>
 
-<script src="/shared/categories.js"></script>
 <script src="/js/app.js"></script>
 <script>
 const id = param('id');
-$('#foot').outerHTML = FOOTER;
 
 (async () => {
-  // [뜻/역할] 현재 로그인한 내 정보(me)와 지금 보고 있는 프로필 주인의 공개 정보(u)를 차례로 가져와요.
   const me = await nav();
   const u = await api('/api/users/' + id).catch(() => null);
-  if (!u) { $('#info').innerHTML = '<div class="empty glass"><p>없는 사용자예요.</p><a class="btn btn-hot" href="/">전시관으로</a></div>'; return; }
-  // [뜻/역할] 로그인한 나와 프로필 주인이 같은 사람인지(`mine`) 확인해요.
+  if (!u) return ($('#info').innerHTML = notFound('없는 사용자예요.'));
   const mine = me && me.id === u.id;
   document.title = u.nickname + ' · PART';
-
-  // [뜻/역할] 내 프로필(`mine === true`)이면 이메일 확인·닉네임/소개 수정·로그아웃·탈퇴가 가능한 `<form>`을 그리고, 남의 프로필이면 깔끔한 이름·소개 카드만 그려요.
   $('#info').innerHTML = mine ? `
     <form class="prof glass" id="pf">
       <p class="mono">My page · 내 정보</p>
@@ -53,8 +46,6 @@ $('#foot').outerHTML = FOOTER;
       <h1 class="prof-name">${esc(u.nickname)}</h1>
       ${u.bio ? `<p style="color:var(--mute);font-weight:300">${esc(u.bio)}</p>` : ''}
     </div>`;
-
-  // [뜻/역할] 내 프로필일 때만 저장(`PUT /api/me`), 로그아웃(`POST /api/logout`), 회원 탈퇴(`DELETE /api/me`) 버튼 동작을 연결해요.
   if (mine) {
     $('#worksTitle').innerHTML = '내가 건 <b>작품</b>';
     $('#pf').onsubmit = async (e) => {
@@ -68,7 +59,7 @@ $('#foot').outerHTML = FOOTER;
       if (confirm('계정과 작품, 받은 감상이 모두 삭제돼요. 정말 탈퇴할까요?')) { await api('/api/me', 'DELETE'); location.href = '/'; }
     };
   }
-  // [뜻/역할] 이 사용자가 올린 작품 목록(`user=회원번호`)을 최신순으로 받아와 카드로 그려요(내 프로필이면 서버가 비공개 작품까지 포함해서 보내 줌!).
+  // 내 프로필이면 서버가 비공개 작품까지 보내 줘요.
   const list = await api('/api/projects?sort=new&user=' + id);
   $('#grid').innerHTML = list.length ? list.map(card).join('')
     : `<div class="empty glass"><p>아직 걸린 작품이 없어요.</p>${mine ? '<a class="btn btn-hot" href="/edit.html">내 작품 걸기</a>' : ''}</div>`;

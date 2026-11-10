@@ -1,41 +1,24 @@
-// [파일 개요] Cloudflare Workers 설정 파일이에요 — `npm run dev`(내 컴퓨터) / `npm run deploy`(인터넷) 둘 다 이 파일을 읽어요.
-// [비유] 가게 '개업 신청서'예요. 가게 이름, 주인(시작 파일), 진열대(화면 파일), 창고(D1·R2)를 어디에 둘지 적어 둬요.
-// [문법] JSONC는 주석(//)을 쓸 수 있는 JSON이에요. 그래서 이렇게 설명을 달 수 있어요.
+// [파일 개요] Cloudflare Workers 설정이에요. `npm run dev`(내 컴퓨터)와 `npm run deploy`(인터넷)가 둘 다 읽어요. JSONC라 주석을 쓸 수 있어요.
 {
-  // [뜻/역할] 에디터가 설정 이름을 자동완성·검사해 주도록 규칙 파일 위치를 알려 줘요.
   "$schema": "node_modules/wrangler/config-schema.json",
-  // [뜻/역할] Worker 이름이에요. 배포하면 이 이름으로 주소가 생겨요.
   "name": "p-art",
-  // [뜻/역할] 요청이 오면 실행할 서버 코드의 시작 파일이에요.
   "main": "backend/src/index.js",
-  // [뜻/역할] 이 날짜 기준의 Workers 동작 방식을 쓰겠다는 약속이에요.
-  // [작성 이유] Cloudflare가 나중에 동작을 바꿔도 우리 코드가 갑자기 망가지지 않게 날짜로 고정해요.
+  // 이 날짜 기준 동작으로 고정해서, Cloudflare가 동작을 바꿔도 코드가 안 깨져요.
   "compatibility_date": "2025-09-01",
 
-  // [뜻/역할] 화면 파일: frontend/ 폴더를 그대로 내보내요(정적 파일, ASSETS).
-  //          아래 run_worker_first 주소들만 먼저 Worker(backend)가 처리하고, 나머지는 파일을 찾아 바로 보내요.
-  // [작성 이유] html·css·이미지는 계산이 필요 없으니 Worker를 거치지 않는 게 빠르고, 무료 요금제 사용량도 아껴요.
+  // 화면 파일은 frontend/에서 바로 보내고, run_worker_first 주소만 Worker(backend)가 처리해요.
   "assets": {
     "directory": "./frontend",
-    // [뜻/역할] 코드에서 c.env.ASSETS로 이 정적 파일 묶음에 접근할 수 있게 붙인 이름이에요(지금 코드에서는 직접 쓰지 않아요).
     "binding": "ASSETS",
     "run_worker_first": ["/api/*", "/uploads/*", "/shared/*"]
   },
 
-  // [뜻/역할] DB: D1 (Cloudflare가 관리해 주는 SQLite 데이터베이스). id는 `npx wrangler d1 create p-art`로 만든 값이에요 (비밀값 아님).
-  // [문법] "binding": "DB" — 코드에서 c.env.DB라는 이름으로 이 데이터베이스를 쓸 수 있게 연결(binding)해요.
-  //        "migrations_dir"은 표를 만드는 SQL 파일(0001_init.sql 등)이 있는 폴더예요.
-  "d1_databases": [
-    { "binding": "DB", "database_name": "p-art", "database_id": "df14cf96-6d63-4752-b6e4-948a5d299880", "migrations_dir": "backend/migrations" }
-  ],
+  // DB(D1, SQLite) — 코드에서 c.env.DB로 써요. id는 비밀값이 아니에요.
+  "d1_databases": [{ "binding": "DB", "database_name": "p-art", "database_id": "df14cf96-6d63-4752-b6e4-948a5d299880", "migrations_dir": "backend/migrations" }],
 
-  // [뜻/역할] 사진: R2(파일 저장소). 이름표(키)로 파일을 넣고 꺼내는 창고예요. 코드에서는 c.env.IMAGES로 써요.
-  //          버킷은 `npx wrangler r2 bucket create p-art-uploads`로 만들었어요.
-  // [작성 이유] KV는 짧은 설정값용이라 쓰기 횟수가 적고(무료 하루 1,000번), R2는 사진 같은 파일용이라 더 알맞아요.
-  "r2_buckets": [
-    { "binding": "IMAGES", "bucket_name": "p-art-uploads" }
-  ],
+  // 사진 저장소(R2) — 코드에서 c.env.IMAGES로 써요. KV보다 파일 저장에 알맞아요.
+  "r2_buckets": [{ "binding": "IMAGES", "bucket_name": "p-art-uploads" }],
 
-  // [뜻/역할] Cloudflare 대시보드에서 로그(console.error 등)와 요청 기록을 볼 수 있게 켜요.
+  // 대시보드에서 로그(console.error)와 요청 기록을 볼 수 있게 켜요.
   "observability": { "enabled": true }
 }

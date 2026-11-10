@@ -1,9 +1,8 @@
 <!doctype html>
-<!-- [파일 개요] 작품 상세 페이지(/project.html?id=번호) — 작품 소개, 체험 링크, 응원하기, 만든 이야기, 스크린샷, 한 줄 감상(방명록), 그리고 내 작품일 때 수정/삭제/홍보키트 버튼을 보여 줘요. -->
+<!-- [파일 개요] 작품 상세(/project.html?id=번호): 소개, 응원, 만든 이야기, 화면 사진, 방명록, 내 작품이면 고치기·내리기. -->
 <html lang="ko">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>작품 · PART</title>
 <script>try{if(localStorage.getItem('theme')==='light')document.documentElement.classList.add('light')}catch(e){}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -15,33 +14,18 @@
 <main id="main"></main>
 <div id="foot"></div>
 
-<script src="/shared/categories.js"></script>
 <script src="/js/app.js"></script>
 <script>
-// [뜻/역할] 주소창(?id=3)에서 지금 보여 줄 작품 번호를 꺼내요.
 const id = param('id');
-$('#foot').outerHTML = FOOTER;
 
-// [뜻/역할] 여러 줄로 된 글(만든 이야기)을 안전하게 이스케이프(esc)한 뒤 엔터(\n)를 <br> 태그로 바꿔 줄바꿈이 보이게 해 주는 함수예요.
-function para(text, fallback) {
-  return text ? esc(text).replace(/\n/g, '<br>') : `<span style="color:var(--dim)">${fallback}</span>`;
-}
-
-// [뜻/역할] 서버에서 작품 상세 정보와 추천 작품 3개를 받아 와 상세 화면 전체를 그리는 비동기 함수예요.
 async function load() {
-  // [뜻/역할] `/api/projects/:id`로 작품 정보를 요청해요. 없거나 남의 비공개 작품이면 null이 돼요.
+  // 없거나 남의 비공개 작품이면 null이 돼요.
   const p = await api('/api/projects/' + id).catch(() => null);
-  if (!p) {
-    $('#main').innerHTML = `<div class="wrap page-top"><div class="empty glass"><p>없거나 비공개인 작품이에요.</p><a class="btn btn-hot" href="/">전시관으로</a></div></div>`;
-    return;
-  }
-  // [뜻/역할] 브라우저 탭 제목을 '작품제목 · PART'로 바꿔요.
+  if (!p) return ($('#main').innerHTML = `<div class="wrap page-top">${notFound('없거나 비공개인 작품이에요.')}</div>`);
   document.title = p.title + ' · PART';
-  // [뜻/역할] 하단 '이 작품도 걸려 있어요'에 보여 줄 다른 공개 인기 작품 최대 3개를 골라요(현재 작품 제외).
+  // 아래 '이 작품도 걸려 있어요'에 보여 줄 다른 인기 작품 3개예요.
   const others = (await api('/api/projects?sort=hot')).filter((o) => o.id !== p.id && o.is_public).slice(0, 3);
-
-  // [뜻/역할] 상단 히어로 패널, 본문(만든 이야기·추천 대상·화면 사진들·방명록), 오른쪽 요약 사이드바, 다른 작품 추천 영역을 그려요.
-  // [핵심 포인트] p.mine이 true(내 작품)일 때만 '홍보 키트', '고치기', '내리기' 버튼(.owner)이 나타나요!
+  // 내 작품(p.mine)일 때만 홍보 키트·고치기·내리기 버튼(.owner)이 보여요. 만든 이야기는 줄바꿈을 <br>로 바꿔요.
   $('#main').innerHTML = `
   <header class="d-hero">
     <div class="hero-bg"><img src="${esc(imgOf(p))}" alt=""></div>
@@ -68,7 +52,7 @@ async function load() {
 
   <div class="wrap sec d-grid">
     <div>
-      <section class="d-sec"><h2 class="mono">Story · 만든 이야기</h2><p class="quote">${para(p.detail, '아직 쓰지 않았어요.')}</p></section>
+      <section class="d-sec"><h2 class="mono">Story · 만든 이야기</h2><p class="quote">${p.detail ? esc(p.detail).replace(/\n/g, '<br>') : '<span style="color:var(--dim)">아직 쓰지 않았어요.</span>'}</p></section>
       <section class="d-sec"><h2 class="mono">For · 이런 친구한테 추천</h2><p class="quote" style="color:var(--mute)">${esc(p.target || '누구나')}</p></section>
       ${p.images.length > 1 ? `<section class="d-sec"><h2 class="mono">Screens · 화면</h2><div class="shots">${p.images.map((s) => `<a href="${esc(s)}" target="_blank" rel="noopener"><img src="${esc(s)}" alt="${esc(p.title)} 화면" loading="lazy"></a>`).join('')}</div></section>` : ''}
       <section class="d-sec" aria-labelledby="g-t">
@@ -99,15 +83,12 @@ async function load() {
     <div class="others">${others.map((o) => `<a class="mini" href="/project.html?id=${o.id}" style="text-decoration:none;display:block"><img src="${esc(imgOf(o))}" alt="" loading="lazy"><div><b style="font-weight:500">${esc(o.title)}</b><span>▲ ${o.likes}</span></div></a>`).join('')}</div>
   </section>` : '<div style="height:80px"></div>'}`;
 
-  // [뜻/역할] '주소 복사' 버튼을 누르면 현재 작품 페이지 주소를 클립보드에 복사해요.
   $('#share').onclick = () => copyText(pageUrl(p.id), '작품 주소를 복사했어요');
-  // [뜻/역할] 내 작품일 때만 있는 '내리기'(#del) 버튼을 누르면 확인창을 띄운 뒤 작품을 삭제하고 내 프로필로 이동해요.
   $('#del')?.addEventListener('click', async () => {
     if (!confirm('작품을 내릴까요? 사진과 감상도 함께 지워져요.')) return;
     await api('/api/projects/' + p.id, 'DELETE');
     location.href = '/profile.html?id=' + p.user_id;
   });
-  // [뜻/역할] 방명록 폼(#gform)을 제출하면 서버에 새 한 줄 감상을 저장하고 방명록 목록을 다시 불러와요.
   $('#gform').onsubmit = async (e) => {
     e.preventDefault();
     try {
@@ -117,11 +98,10 @@ async function load() {
       guests();
     } catch (err) { toast(err.message); }
   };
-  // [뜻/역할] 처음 상세 페이지가 열릴 때 방명록 목록을 불러와요.
   guests();
 }
 
-// [뜻/역할] 서버에서 이 작품의 방명록 목록을 받아와 화면에 그리고, 작품 주인(`g.canDelete`)에게는 '지우기' 버튼을 보여 주는 함수예요.
+// 방명록을 그려요. 지울 수 있는 사람(g.canDelete)에게만 '지우기' 버튼이 보여요.
 async function guests() {
   const rows = await api(`/api/projects/${id}/comments`);
   $('#gcount').textContent = rows.length;
@@ -130,7 +110,6 @@ async function guests() {
       ${g.canDelete ? `<button class="g-del" type="button" data-del="${g.id}" aria-label="이 감상 지우기">지우기</button>` : ''}</li>`).join('')
     : '<p style="color:var(--dim);margin-top:14px">아직 감상이 없어요. 첫 번째로 남겨 주세요.</p>';
 }
-// [뜻/역할] 방명록의 '지우기' 버튼(`data-del`) 클릭을 감지해 해당 감상을 삭제하고 목록을 갱신해요.
 $('#main').addEventListener('click', async (e) => {
   const b = e.target.closest('[data-del]');
   if (!b || !confirm('이 감상을 지울까요?')) return;

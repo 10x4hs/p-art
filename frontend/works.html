@@ -1,11 +1,9 @@
 <!doctype html>
-<!-- [파일 개요] 전시관 전체 작품 페이지(/works.html) — 개수 제한 없이 모든 공개 작품을 검색·분야·정렬 조건으로 탐색하고, 조건을 URL 주소창에 실시간 저장해요. -->
+<!-- [파일 개요] 전시관(/works.html): 모든 공개 작품을 검색·분야·정렬로 보고, 조건을 주소창에 저장해요. -->
 <html lang="ko">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>전시관 · PART</title>
-<!-- [뜻/역할] 저장된 밝은 테마(light)가 있으면 화면이 뜨기 전에 즉시 적용해요. -->
 <script>try{if(localStorage.getItem('theme')==='light')document.documentElement.classList.add('light')}catch(e){}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600;700&family=Noto+Sans+KR:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400&family=Playfair+Display:wght@600;700&display=swap">
@@ -33,41 +31,20 @@
 <script src="/shared/categories.js"></script>
 <script src="/js/app.js"></script>
 <script>
-// [뜻/역할] 주소창(?q=&cat=&sort=)에서 초기 검색 조건을 읽어 state를 만들어요. 홈에서 넘겨준 조건이나 친구가 공유한 링크 조건이 그대로 복원돼요!
+// 주소창(?q=&cat=&sort=) 조건으로 시작해서, 홈에서 넘어오거나 공유한 링크도 같은 목록이 나와요.
 const state = { q: param('q') || '', sort: param('sort') === 'new' ? 'new' : 'hot', cat: CATS.includes(param('cat')) ? param('cat') : '' };
-$('#foot').outerHTML = FOOTER;
-// [뜻/역할] 주소창에 있던 검색어(q)를 실제 검색 입력칸에도 채워 넣어요.
 $('#q').value = state.q;
 
-// [뜻/역할] 분야 칩 버튼들을 그리고 현재 선택된 분야(state.cat)를 활성화해요.
-function chips() {
-  $('#chips').innerHTML = ['', ...CATS].map((c) =>
-    `<button type="button" class="chip" data-cat="${c}" aria-pressed="${state.cat === c}">${c || '전체'}</button>`).join('');
-}
-// [뜻/역할] 인기순/최신순 버튼 중 현재 선택된 정렬(state.sort) 버튼을 활성화해요.
-function sorts() { $$('[data-sort]').forEach((x) => x.setAttribute('aria-pressed', x.dataset.sort === state.sort)); }
-
-// [뜻/역할] 조건에 맞는 전체 작품 목록을 서버에서 받아와 화면에 그리고, 브라우저 주소창도 현재 조건으로 조용히 업데이트해요.
 async function list() {
   const qs = new URLSearchParams({ q: state.q, sort: state.sort, cat: state.cat });
-  // [뜻/역할] 페이지 새로고침 없이 주소창의 URL만 `/works.html?q=...`로 바꿔서, 지금 상태에서 새로고침하거나 주소를 복사해도 같은 목록이 나오게 해요!
-  history.replaceState(null, '', '/works.html?' + qs);
-  // [뜻/역할] 서버에서 작품 목록을 받아 공개 작품만 남기고, 홈과 달리 개수 제한(slice) 없이 전부 보여 줘요.
+  history.replaceState(null, '', '/works.html?' + qs); // 새로고침 없이 주소만 바꿔요
   const rows = (await api('/api/projects?' + qs)).filter((p) => p.is_public);
   $('#total').textContent = rows.length;
   $('#count').textContent = `작품 ${rows.length}개`;
-  $('#grid').innerHTML = rows.length ? rows.map(card).join('') :
-    `<div class="empty glass"><p>${state.q || state.cat ? '찾는 작품이 아직 없어요.' : '아직 걸린 작품이 없어요.'}</p><a class="btn btn-hot" href="/edit.html">첫 번째로 걸어 보기</a></div>`;
+  grid(rows, state);
 }
 
-// [뜻/역할] 분야 칩 클릭, 정렬 버튼 클릭, 검색창 입력(250ms 디바운스) 이벤트를 연결해요.
-$('#chips').onclick = (e) => { const b = e.target.closest('[data-cat]'); if (!b) return; state.cat = b.dataset.cat; chips(); list(); };
-$$('[data-sort]').forEach((b) => (b.onclick = () => { state.sort = b.dataset.sort; sorts(); list(); }));
-let qt;
-$('#q').oninput = (e) => { clearTimeout(qt); qt = setTimeout(() => { state.q = e.target.value.trim(); list(); }, 250); };
-
-// [뜻/역할] 상단 메뉴, 분야 칩, 정렬 버튼, 작품 목록을 초기 실행해요.
-nav(); chips(); sorts(); list();
+nav(); filters(state, list); list();
 </script>
 </body>
 </html>
