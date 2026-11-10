@@ -1,117 +1,100 @@
-# PART — Project + Art
+<div align="center">
 
-> 학생이 만든 프로젝트를 링크 대신 **작품처럼 걸어 두는** 학교 전시관.
+# 🖼️ PART
 
-수행평가로 만든 웹페이지·게임·도구를 카드로 걸고, 친구들은 써 보고 ▲ 응원과 한 줄 감상을 남깁니다.
-작품을 걸면 단톡방·인스타에 바로 붙여 넣을 홍보 문구도 만들어 줍니다.
+**학생 프로젝트를 걸어 두는 온라인 전시관**
 
-- 화면: HTML · CSS · 바닐라 JavaScript (프레임워크 없음)
-- 서버: Cloudflare Workers + [Hono](https://hono.dev)
-- DB: Cloudflare D1 (SQLite) · 사진: Cloudflare R2
-- 🌐 **https://p-art.swx2.workers.dev** (무료 요금제)
+수행평가로 만든 웹페이지·게임·도구를 링크 대신 **작품처럼** 걸어 두고,<br/>
+친구들은 써 보고 ▲ 응원과 한 줄 감상을 남겨요.
 
-## 바로 실행하기
+[![CI](https://github.com/10x4hs/p-art/actions/workflows/ci.yml/badge.svg)](https://github.com/10x4hs/p-art/actions/workflows/ci.yml)
+![Cloudflare Workers](https://img.shields.io/badge/Cloudflare-Workers-F38020?logo=cloudflare&logoColor=white)
+![D1](https://img.shields.io/badge/DB-D1-F38020?logo=cloudflare&logoColor=white)
+![R2](https://img.shields.io/badge/사진-R2-F38020?logo=cloudflare&logoColor=white)
+![Hono](https://img.shields.io/badge/Hono-4-E36002?logo=hono&logoColor=white)
+![HTML/CSS/JS](https://img.shields.io/badge/HTML·CSS·JS-바닐라-F7DF1E?logo=javascript&logoColor=black)
 
-Node.js 20 이상이 필요해요. Cloudflare 계정은 **없어도** 돼요 (내 컴퓨터에 가짜 D1·R2를 만들어서 돌려요).
+### 👉 [**p-art.swx2.workers.dev** 에서 전시 보러 가기](https://p-art.swx2.workers.dev)
 
-```bash
-npm install
-npm run dev        # → http://localhost:8787  (코드를 고치면 자동 반영)
-npm test           # 임시 DB로 가입~탈퇴까지 21가지 자동 확인
-```
+</div>
 
-처음 실행하면 `.wrangler/` 폴더에 로컬 DB가 만들어지고 빈 전시관에서 시작해요.
-가입 → 작품 걸기 → 홍보 키트 순서로 눌러 보면 전체 흐름을 볼 수 있어요.
+---
 
-## 한눈에 보기
+## 📸 화면
+
+| 홈 | 전시관 (검색·분야·정렬) |
+|---|---|
+| ![PART 홈 화면](docs/img/home.jpg) | ![PART 전시관 화면](docs/img/works.jpg) |
+
+<sub>어두운 테마, 1280×800 · 로컬에서 샘플 작품 4개를 걸어 두고 찍었어요.</sub>
+
+## ✨ 무엇을 할 수 있나요
+
+| 기능 | 설명 |
+|---|---|
+| 🔐 가입·로그인 | 이메일 + 비밀번호로 가입하고 로그인·로그아웃·탈퇴해요 |
+| 🖼️ 작품 걸기 | 사진(최대 5장)·분야·기술 태그·GitHub 주소를 넣어 걸고, 고치거나 지우거나 비공개로 돌려요 |
+| 🔎 갤러리·검색 | 전시관에서 제목·소개·태그·만든 사람으로 검색하고, 분야 필터와 인기순/최신순 정렬을 해요 |
+| 🏛️ 전시 페이지 | 작품마다 만든 이야기, 추천 대상, 화면 사진, 체험 링크를 한 페이지에 보여 줘요 |
+| ▲ 응원 | 로그인한 사람은 작품마다 **1인 1회** 응원을 켜고 끌 수 있어요 |
+| 💬 방명록 | 로그인 없이 한 줄 감상을 남기고, 작품 주인은 감상을 지울 수 있어요 |
+| 📣 홍보 키트·링크 공유 | 단톡방·인스타용 홍보 문구와 작품 주소를 버튼 한 번에 복사해요 |
+| 👤 프로필 | 닉네임·소개를 고치고, 내가 걸어 둔 작품을 한곳에서 봐요 |
+| 🌗 밝은/어두운 테마 | 어두운 화면이 기본이고, ☀ 버튼으로 밝은 화면으로 바꿔요 (선택은 기억돼요) |
+
+## 🧭 구조
 
 ```mermaid
 flowchart LR
-  B["🖥️ 브라우저<br/>frontend/"] -- "fetch /api/…" --> W["⚙️ Worker<br/>backend/src/"]
-  CF["☁️ Cloudflare 정적 파일"] -- "HTML·CSS·JS" --> B
-  W --> D1[("D1<br/>가입·작품·감상")]
-  W --> R2[("R2<br/>사진")]
-  SH["shared/<br/>분야 목록"] -.-> W
+  B["🖥️ 브라우저"] -- "HTML·CSS·JS" --> SA["📄 Static Assets<br/>frontend/"]
+  B -- "fetch /api/…" --> W["⚙️ Worker (Hono)<br/>backend/src/"]
+  W --> D1[("🗄️ D1<br/>가입·작품·감상")]
+  W --> R2[("🪣 R2<br/>사진")]
 ```
 
-📘 **자세한 그림 설명: [docs/WORKFLOW.md](docs/WORKFLOW.md)** · 🚂 배포: [docs/DEPLOY.md](docs/DEPLOY.md) · 🤝 같이 작업하기: [CONTRIBUTING.md](CONTRIBUTING.md) · 🔰 코드 해설(초보자용): [EXPLAIN.md](EXPLAIN.md) · 🔍 코드 리뷰: [docs/CODE-REVIEW.md](docs/CODE-REVIEW.md)
+자세한 흐름은 [docs/WORKFLOW.md](docs/WORKFLOW.md)에 그림으로 설명돼 있어요.
 
-## 기능
+## 🚀 빠른 시작
 
-| 구분 | 기능 |
-|---|---|
-| 계정 | 이메일 + 비밀번호 가입·로그인, 로그아웃, 회원 탈퇴, 닉네임·소개 수정 |
-| 작품 | 등록(사진 5장, 분야, 기술 태그, GitHub), 수정, 삭제, 비공개 |
-| 둘러보기 | 홈(이번 주의 작품 + 최근 6개), 전시관(검색·분야·인기순/최신순 전체 목록) |
-| 반응 | ▲ 응원(로그인, 1인 1회), 한 줄 감상(로그인 없이, 작품 주인이 삭제 가능) |
-| 알리기 | 홍보 키트(단톡방·인스타·한 줄 문구 복사), 작품 주소 복사 |
-| 화면 | 어두운 화면 기본 + 밝은 화면 전환, 모바일 대응 |
+Node.js 20 이상만 있으면 돼요. Cloudflare 계정은 **없어도** 돼요 (내 컴퓨터에 가짜 D1·R2를 만들어서 돌려요).
 
-## 페이지
-
-| 주소 | 화면 |
-|---|---|
-| `/` | 홈 — 히어로, 이번 주의 작품, 최근 작품 6개, 사용법 |
-| `/works.html` | 전시관 — 전체 작품 (검색·분야·정렬, 주소에 조건 저장) |
-| `/project.html?id=` | 작품 상세 — 이야기, 추천 대상, 화면, 방명록 |
-| `/edit.html` | 작품 걸기 / 고치기 (`?id=`) — 입력하는 대로 미리보기 |
-| `/kit.html?id=` | 홍보 키트 |
-| `/login.html`, `/signup.html` | 한 칸씩 입력하는 로그인·가입 |
-| `/profile.html?id=` | 프로필 — 내 정보 수정, 걸어 둔 작품 |
-
-## 폴더 구조
-
-```
-frontend/                 화면 (FE 담당) — Cloudflare가 그대로 보내는 파일
-  index.html  works.html  project.html  edit.html  kit.html
-  login.html  signup.html profile.html
-  js/app.js               모든 화면이 같이 쓰는 함수 (api 호출, 메뉴, 카드, 응원, 한 칸 입력 폼)
-  style.css               디자인 — 포인트색은 맨 위 --accent
-  img/                    디자인 사진 (CC0)
-backend/                  서버 (BE 담당) — Cloudflare Worker
-  src/index.js            시작점: 주소 나누기, 사진·분야 보내기, 오류 처리
-  src/session.js          로그인 세션 (쿠키 sid ↔ D1 sessions 표)
-  src/password.js         비밀번호 암호화 (PBKDF2)
-  src/util.js             공용 도구 (오류, 주소 검사, IP)
-  src/routes/auth.js      /api/signup, /login, /logout, /me, /users/:id
-  src/routes/projects.js  /api/projects 목록·상세·등록·수정·삭제, /like, /comments
-  migrations/             DB 표 구조 (0001_init.sql, 바꿀 땐 0002_… 추가)
-shared/categories.json    분야 목록 (프론트·백엔드 공용)
-scripts/smoke-test.js     npm test
-wrangler.jsonc            Cloudflare 설정 (D1·R2 연결, 정적 파일)
-docs/                     WORKFLOW(그림 설명), DEPLOY(배포), CODE-REVIEW(리뷰 가이드)
-.github/                  CI, 자동 배포, PR 라벨 자동, PR 템플릿
+```bash
+npm ci          # 패키지 설치
+npm run dev     # 로컬 DB 준비 후 → http://localhost:8787
+npm test        # 임시 DB로 가입~탈퇴까지 자동 확인
 ```
 
-## API 요약
+배포는 손으로 하지 않아요. **`main`에 머지되면** GitHub Actions가 테스트 → DB 업데이트 → 배포까지 자동으로 해요. ([docs/DEPLOY.md](docs/DEPLOY.md))
 
-| 메서드 | 주소 | 설명 | 로그인 |
-|---|---|---|---|
-| POST | `/api/signup` | `{email, password, nickname}` | |
-| POST | `/api/login` | `{email, password}` | |
-| POST | `/api/logout` | | |
-| GET / PUT / DELETE | `/api/me` | 내 정보 / 닉네임·소개 수정 / 탈퇴 | ✔ (GET 제외) |
-| GET | `/api/users/:id` | 공개 프로필 | |
-| GET | `/api/projects?q=&cat=&sort=hot\|new&user=` | 작품 목록 | |
-| GET | `/api/projects/:id` | 작품 상세 | |
-| POST / PUT / DELETE | `/api/projects[/:id]` | 등록 / 수정 / 삭제 (multipart, `images` 5장·장당 1.5MB) | ✔ 본인 |
-| POST | `/api/projects/:id/like` | ▲ 응원 켜기·끄기 | ✔ |
-| GET / POST | `/api/projects/:id/comments` | 한 줄 감상 보기 / 남기기 (IP당 1분 5개) | |
-| DELETE | `/api/projects/:id/comments/:cid` | 감상 지우기 | ✔ 작품 주인 |
+## 📁 폴더 구조
 
-## 배포
+```
+frontend/              화면 — HTML 페이지들, style.css, js/app.js(공용 함수), img/
+backend/src/           서버 — Hono Worker 시작점(index.js)과 로그인·비밀번호 도구
+backend/src/routes/    API — auth.js(가입·로그인), projects.js(작품·응원·감상)
+backend/migrations/    DB 표 구조 (SQL)
+shared/                프론트·백엔드가 같이 쓰는 분야 목록
+scripts/smoke-test.js  npm test 로 도는 자동 확인
+docs/                  설명서 (WORKFLOW, DEPLOY, CODE-REVIEW, 스크린샷)
+wrangler.jsonc         Cloudflare 설정 (D1·R2 연결, 정적 파일)
+.github/               CI, 자동 배포, PR 템플릿
+```
 
-**Cloudflare 무료 요금제**에서 돌아가요 → https://p-art.swx2.workers.dev
-`main`에 머지되면 GitHub Actions가 테스트 → DB 표 업데이트 → 배포까지 자동으로 해요. 자세한 내용과 무료 한도는 **[docs/DEPLOY.md](docs/DEPLOY.md)**.
+## 👥 팀
 
-## 브랜치
+| 이름 | 역할 | 맡은 일 |
+|---|---|---|
+| 김예준 | PM · PL | 기획, 일정, 전체 관리 |
+| 김서율 | Frontend | 공통 UI · 갤러리 · 검색 · 프로필 |
+| 김가은 | Frontend | 카드 · 로그인 · 등록 폼 · 전시 페이지 |
+| 한지석 | Backend | API · DB · 로그인 · 업로드 |
 
-`main`(배포) ← `dev`(통합) ← `feature/fe-…`, `feature/be-…`. 자세한 규칙은 [CONTRIBUTING.md](CONTRIBUTING.md).
+## 📚 문서
 
-## 아직 없는 것
+- 🗺️ [docs/WORKFLOW.md](docs/WORKFLOW.md) — 전체 흐름 그림 설명
+- 🚂 [docs/DEPLOY.md](docs/DEPLOY.md) — 배포와 무료 한도
+- 🔍 [docs/CODE-REVIEW.md](docs/CODE-REVIEW.md) — 코드 리뷰 가이드
+- 🔰 [EXPLAIN.md](EXPLAIN.md) — 초보자용 코드 해설
+- 🤝 [CONTRIBUTING.md](CONTRIBUTING.md) — 브랜치·PR 규칙, 같이 작업하기
 
-구글 로그인, 이메일 인증, 비밀번호 찾기, 관리자 화면.
-
-## 출처
-
-사진: Unsplash, StockSnap, rawpixel (CC0)
+<div align="center"><sub>사진: Unsplash, StockSnap, rawpixel (CC0)</sub></div>
