@@ -1,5 +1,9 @@
 # PART는 어떻게 돌아가나요?
 
+![PART 워크플로 한눈에 보기](img/workflow.png)
+
+<sub>그림 원본: [img/workflow.html](img/workflow.html) — 고친 뒤 브라우저로 열어 캡처하면 돼요.</sub>
+
 팀원이 코드를 처음 열었을 때 **무엇이 어디서 어떻게 움직이는지** 그림으로 이해하도록 만든 문서예요.
 (GitHub에서 열면 아래 그림이 자동으로 그려져요.)
 
