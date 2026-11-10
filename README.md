@@ -33,7 +33,7 @@ flowchart LR
   SH["shared/<br/>분야 목록"] -.-> B & S
 ```
 
-📘 **자세한 그림 설명: [docs/WORKFLOW.md](docs/WORKFLOW.md)** · 🚂 배포: [docs/DEPLOY.md](docs/DEPLOY.md) · 🤝 같이 작업하기: [CONTRIBUTING.md](CONTRIBUTING.md) · 🔰 코드 해설(초보자용): [EXPLAIN.md](EXPLAIN.md)
+📘 **자세한 그림 설명: [docs/WORKFLOW.md](docs/WORKFLOW.md)** · 🚂 배포: [Railway](docs/DEPLOY.md) / [Cloudflare](docs/DEPLOY-CLOUDFLARE.md) · 🤝 같이 작업하기: [CONTRIBUTING.md](CONTRIBUTING.md) · 🔰 코드 해설(초보자용): [EXPLAIN.md](EXPLAIN.md)
 
 ## 기능
 
@@ -101,6 +101,8 @@ docs/                     WORKFLOW(그림 설명), DEPLOY(배포)
 
 Railway에 올려요. `main` 브랜치에 머지하면 자동 배포되고, DB·사진은 볼륨(`/data`)에 남아요.
 환경변수 `SECRET`, `DATA_DIR=/data`, `NODE_ENV=production`이 필요해요. 단계별 방법은 **[docs/DEPLOY.md](docs/DEPLOY.md)**.
+
+Cloudflare Workers(D1 + R2)에도 올라가 있어요: **https://p-art.swx2.workers.dev** — `npm run cf:deploy`. 자세한 건 **[docs/DEPLOY-CLOUDFLARE.md](docs/DEPLOY-CLOUDFLARE.md)**.
 
 ## 브랜치
 

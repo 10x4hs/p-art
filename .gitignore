@@ -3,3 +3,5 @@ data/
 .grill/
 .DS_Store
 .env
+dist/
+.wrangler/
