@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0b0c10;--panel:#14161c;--line:#2a2d36;--ink:#f2f1ee;--mute:#a6a9b2;--accent:#F2B33D;
+--ga:#E8875B;--se:#5FB3A6;--ji:#7C9CF0;--ye:#C08BE0;--cf:#F38020}
+*{box-sizing:border-box;margin:0}
+body{width:1800px;background:var(--bg);color:var(--ink);font-family:"Noto Sans KR",sans-serif;padding:56px 64px 48px}
+h1{font-size:44px;font-weight:900;letter-spacing:-.02em}
+h1 span{color:var(--accent)}
+.sub{color:var(--mute);font-size:19px;margin-top:6px}
+.legend{display:flex;gap:22px;margin-top:22px;font-size:17px;color:var(--mute)}
+.legend i{display:inline-block;width:14px;height:14px;border-radius:4px;margin-right:8px;vertical-align:-1px}
+.sec{margin-top:40px;background:var(--panel);border:1px solid var(--line);border-radius:22px;padding:26px 30px 30px}
+.sec h2{font-size:22px;font-weight:700;display:flex;align-items:center;gap:12px;margin-bottom:20px}
+.sec h2 b{font-family:"JetBrains Mono";font-size:15px;color:var(--bg);background:var(--accent);border-radius:8px;padding:3px 10px}
+.row{display:flex;align-items:stretch;gap:0}
+.box{flex:1;border:2px solid var(--c,#555);border-radius:16px;padding:14px 16px;background:color-mix(in srgb,var(--c,#555) 12%,transparent)}
+.box .t{font-size:19px;font-weight:700}
+.box .d{font-size:14.5px;color:var(--mute);margin-top:5px;line-height:1.5}
+.box .f{font-family:"JetBrains Mono";font-size:12.5px;color:var(--c);margin-top:8px}
+.arr{width:38px;display:flex;align-items:center;justify-content:center;color:var(--accent);font-size:26px;font-weight:900;flex:none}
+.ga{--c:var(--ga)}.se{--c:var(--se)}.ji{--c:var(--ji)}.ye{--c:var(--ye)}.cf{--c:var(--cf)}
+.arch{display:grid;grid-template-columns:1.05fr 38px 1.5fr 38px .9fr;align-items:stretch}
+.col{display:flex;flex-direction:column;gap:12px}
+.colt{font-size:15px;color:var(--mute);font-family:"JetBrains Mono";margin-bottom:2px}
+.mini{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.note{margin-top:14px;font-size:15px;color:var(--mute)}
+.note b{color:var(--ink)}
+</style></head><body>
+<h1><span>PART</span> 워크플로 한눈에 보기</h1>
+<p class="sub">학생 프로젝트 전시관 · 사용자가 버튼을 누르면 화면 → 서버(Worker) → 저장소(D1·R2) 순서로 흘러가요 · https://p-art.swx2.workers.dev</p>
+<div class="legend"><span><i style="background:var(--ga)"></i>김가은 · 로그인·등록 폼·전시 페이지</span><span><i style="background:var(--se)"></i>김서율 · 공통 UI·갤러리·프로필</span><span><i style="background:var(--ji)"></i>한지석 · API·DB·권한</span><span><i style="background:var(--ye)"></i>김예준 · 규칙·검수·배포</span><span><i style="background:var(--cf)"></i>Cloudflare</span></div>
+
+<div class="sec"><h2><b>1</b>사용자 흐름 — 등록 → 전시 → 반응</h2>
+<div class="row">
+ <div class="box ga"><div class="t">가입·로그인</div><div class="d">한 칸씩 입력<br>쿠키로 30일 유지</div><div class="f">signup · login.html</div></div><div class="arr">→</div>
+ <div class="box ga"><div class="t">작품 걸기</div><div class="d">사진 5장·태그·팀원<br>임시 저장 자동</div><div class="f">edit.html</div></div><div class="arr">→</div>
+ <div class="box se"><div class="t">전시관·검색</div><div class="d">분야 필터·정렬<br>카드 격자</div><div class="f">index · works.html</div></div><div class="arr">→</div>
+ <div class="box ga"><div class="t">전시 페이지</div><div class="d">바로 해 보기·미리보기<br>조회수 +1</div><div class="f">project.html</div></div><div class="arr">→</div>
+ <div class="box se"><div class="t">반응</div><div class="d">▲ 응원(1인 1회)<br>★ 북마크 · 방명록</div><div class="f">app.js · project.html</div></div><div class="arr">→</div>
+ <div class="box ga"><div class="t">공유</div><div class="d">홍보 키트·주소 복사<br>카톡 썸네일(og)</div><div class="f">kit.html · og.js</div></div><div class="arr">→</div>
+ <div class="box ye"><div class="t">신고·관리</div><div class="d">3명 신고 → 자동 숨김<br>관리자 화면</div><div class="f">admin.html</div></div>
+</div></div>
+
+<div class="sec"><h2><b>2</b>코드가 흐르는 길 — 화면 → 서버 → 저장소</h2>
+<div class="arch">
+ <div class="col"><div class="colt">브라우저 · frontend/</div>
+  <div class="box se"><div class="t">HTML 페이지 9개</div><div class="d">index · works · project · edit · profile · kit · login · signup · admin</div></div>
+  <div class="box se"><div class="t">app.js (공용)</div><div class="d">api() · nav() · card() · stepForm() · 응원 클릭</div></div>
+  <div class="box cf"><div class="t">Static Assets</div><div class="d">HTML·CSS·JS 파일은 Cloudflare가 바로 내려줘요</div></div>
+ </div>
+ <div class="arr">⇄</div>
+ <div class="col"><div class="colt">Cloudflare Worker · backend/src/ (Hono)</div>
+  <div class="box ji"><div class="t">index.js — 조립</div><div class="d">/api/* · /uploads/* · /project(og) 만 Worker가 받아서 담당 파일로 넘겨요 · 오류는 { error } 하나로</div></div>
+  <div class="mini">
+   <div class="box ji"><div class="t">routes/auth.js</div><div class="d">가입·로그인·내 정보·회원 검색</div></div>
+   <div class="box ji"><div class="t">routes/projects.js</div><div class="d">작품 CRUD·검색·응원·북마크·방명록·신고</div></div>
+   <div class="box ji"><div class="t">session.js · password.js</div><div class="d">sid 쿠키 · PBKDF2 암호화 · needLogin</div></div>
+   <div class="box ji"><div class="t">admin.js · og.js</div><div class="d">관리자 API · 공유 미리보기 태그</div></div>
+  </div>
+ </div>
+ <div class="arr">⇄</div>
+ <div class="col"><div class="colt">저장소</div>
+  <div class="box cf"><div class="t">D1 (SQLite)</div><div class="d">users · projects · images · likes · comments · sessions · project_members · bookmarks · reports</div><div class="f">backend/migrations/</div></div>
+  <div class="box cf"><div class="t">R2</div><div class="d">사진 파일 (DB엔 키만)<br>/uploads/키 로 보여 줘요</div><div class="f">p-art-uploads</div></div>
+ </div>
+</div>
+<p class="note">예) <b>작품 걸기</b>: edit.html 저장 → <b>POST /api/projects</b> → projects.js readForm 검사 → 사진은 <b>R2</b>, 글은 <b>D1</b> → { id } → 홍보 키트로 이동</p>
+</div>
+
+<div class="sec"><h2><b>3</b>개발 · 배포 흐름</h2>
+<div class="row">
+ <div class="box ye"><div class="t">feature/… 브랜치</div><div class="d">npm run dev<br>(내 컴퓨터에 가짜 D1·R2)</div></div><div class="arr">→</div>
+ <div class="box ye"><div class="t">PR + CI</div><div class="d">npm test · 자동 검사 59개<br>라벨 자동</div></div><div class="arr">→</div>
+ <div class="box ye"><div class="t">dev</div><div class="d">기능을 모아 함께 확인</div></div><div class="arr">→</div>
+ <div class="box ye"><div class="t">main</div><div class="d">PR 머지</div></div><div class="arr">→</div>
+ <div class="box cf"><div class="t">배포</div><div class="d">D1 마이그레이션 → wrangler deploy<br>p-art.swx2.workers.dev</div></div>
+</div></div>
+</body></html>
