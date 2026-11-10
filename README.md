@@ -11,7 +11,7 @@
 ![Hono](https://img.shields.io/badge/Hono-4-E36002?logo=hono&logoColor=white)
 ![HTML/CSS/JS](https://img.shields.io/badge/HTML·CSS·JS-바닐라-F7DF1E?logo=javascript&logoColor=black)
 
-### 👉 [**p-art.swx2.workers.dev** 에서 전시 보러 가기](https://p-art.swx2.workers.dev)
+### 보러 가기 (https://p-art.swx2.workers.dev)
 
 </div>
 
