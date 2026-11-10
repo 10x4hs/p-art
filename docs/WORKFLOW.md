@@ -184,6 +184,12 @@ erDiagram
   projects ||--o{ images : "사진"
   projects ||--o{ likes : "받는다"
   projects ||--o{ comments : "감상"
+  projects ||--o{ project_members : "팀원"
+  users ||--o{ project_members : "참여"
+  users ||--o{ bookmarks : "담는다"
+  projects ||--o{ bookmarks : "담긴다"
+  users ||--o{ reports : "신고한다"
+  projects ||--o{ reports : "신고받는다"
 
   users {
     int id PK
@@ -205,6 +211,8 @@ erDiagram
     text maker "만든 사람"
     text target "추천 대상"
     int is_public
+    int views "조회수 (0002)"
+    int hidden "신고로 숨김 (0002)"
     text created_at
   }
   images {
@@ -224,11 +232,27 @@ erDiagram
     text ip "도배 방지"
     text created_at
   }
+  project_members {
+    int project_id PK
+    int user_id PK
+  }
+  bookmarks {
+    int user_id PK
+    int project_id PK
+  }
+  reports {
+    int id PK
+    int project_id FK
+    int user_id FK
+    text reason "1~100자"
+    text created_at
+  }
 ```
 
-- 사용자를 지우면 작품·응원이, 작품을 지우면 사진·응원·감상이 **함께 지워져요**(`ON DELETE CASCADE`).
+- 사용자를 지우면 작품·응원이, 작품을 지우면 사진·응원·감상·팀원·북마크·신고가 **함께 지워져요**(`ON DELETE CASCADE`).
+- 신고(`reports`)는 한 사람이 한 작품에 한 번만(UNIQUE). 서로 다른 3명이 신고하면 `projects.hidden = 1`이 돼요.
 - 로그인 세션은 `sessions` 표(sid, uid, expires)에 있어요.
-- 표 구조는 `backend/migrations/0001_init.sql`. 바꿀 땐 **새 파일**(`0002_….sql`)을 추가해요 → 배포할 때 자동 적용.
+- 표 구조는 `backend/migrations/0001_init.sql` + `0002_features.sql`(팀원·북마크·신고·조회수). 바꿀 땐 **새 파일**(`0003_….sql`)을 추가해요 → 배포할 때 자동 적용.
 
 ---
 
@@ -240,7 +264,7 @@ flowchart LR
     BR["feature/fe-… 또는<br/>feature/be-… 브랜치"] --> CODE["코드 수정<br/>npm run dev (로컬 D1·R2)"] --> T["npm test"]
   end
   T -- push --> PR["Pull Request → dev"]
-  PR --> CI{"GitHub Actions CI<br/>문법 검사 + 테스트 21개"}
+  PR --> CI{"GitHub Actions CI<br/>문법 검사 + 테스트 59개"}
   CI -- 실패 --> CODE
   CI -- 통과 + 라벨 자동 --> DEV["dev 브랜치<br/>(통합)"]
   DEV -- "발표·배포할 때 PR" --> MAIN["main 브랜치<br/>(배포용)"]

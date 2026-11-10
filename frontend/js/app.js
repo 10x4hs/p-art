@@ -40,7 +40,7 @@ async function nav() {
   $('#nav').outerHTML = `<nav class="nav glass" id="nav" aria-label="PART 메뉴">
     <a class="logo" href="/" aria-label="PART 처음으로" style="text-decoration:none"><span class="wm"><span class="p">P</span><span class="art">ART</span></span></a>
     <div class="auth">${user
-      ? `<a class="auth-link nav-me" href="/profile.html?id=${user.id}">${esc(user.nickname)}</a>`
+      ? `${user.isAdmin ? '<a class="auth-link" href="/admin.html">관리</a>' : ''}<a class="auth-link nav-me" href="/profile.html?id=${user.id}">${esc(user.nickname)}</a>`
       : `<a class="auth-link" href="/login.html">Login</a><a class="auth-link" href="/signup.html">Sign up</a>`}</div>
     <div class="nav-links">
       <a class="nav-link" href="/works.html">전시관</a>
@@ -81,7 +81,7 @@ function card(p) {
   return `<article class="card">
     <a class="card-img" href="/project.html?id=${p.id}" aria-label="${esc(p.title)} 작품 보기" tabindex="-1"><img src="${esc(imgOf(p))}" alt="${esc(p.title)} 대표 사진" loading="lazy"></a>
     <div class="card-top"><span class="pill glass mono">${esc(p.cats[0] || '작품')}</span>${
-      !p.is_public ? '<span class="pill glass mono private">비공개</span>' : isNew(p) ? '<span class="pill glass mono" style="color:var(--ink)">New</span>' : ''}</div>
+      p.hidden ? '<span class="pill glass mono private">숨김</span>' : !p.is_public ? '<span class="pill glass mono private">비공개</span>' : isNew(p) ? '<span class="pill glass mono" style="color:var(--ink)">New</span>' : ''}</div>
     <div class="card-bar glass">
       <div class="card-t"><h3><a href="/project.html?id=${p.id}" style="text-decoration:none">${esc(p.title)}</a></h3><p>${esc(p.summary)}</p>
         <p class="mono"><a href="${esc(p.url)}" target="_blank" rel="noopener" style="color:inherit;text-decoration:none">▶ 바로 해 보기</a> · ${esc(makerOf(p))}</p></div>

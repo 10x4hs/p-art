@@ -1,9 +1,20 @@
 <!doctype html>
-<!-- [파일 개요] 작품 걸기(/edit.html)와 고치기(?id=번호): 왼쪽 폼에 쓰는 대로 오른쪽 미리보기 카드가 바뀌어요. -->
+<!-- [파일 개요] 작품 걸기(/edit.html)와 고치기(?id=번호): 왼쪽 폼에 쓰는 대로 오른쪽 미리보기 카드가 바뀌어요. 쓰던 글은 브라우저에 임시 저장돼요. -->
 <html lang="ko">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>작품 걸기 · PART</title>
+<!-- 공유 미리보기 기본값. 작품 페이지는 서버(backend/src/og.js)가 작품마다 바꿔 보내요. -->
+<meta name="description" content="수행평가로 만든 웹페이지·게임·도구를 링크 대신 작품처럼 걸어 두는 학생 전시관이에요.">
+<meta property="og:type" content="website"><meta property="og:site_name" content="PART">
+<meta property="og:title" content="PART · 학생 작품 전시관">
+<meta property="og:description" content="수행평가로 만든 웹페이지·게임·도구를 링크 대신 작품처럼 걸어 두는 학생 전시관이에요.">
+<meta property="og:image" content="https://p-art.swx2.workers.dev/img/hero.jpg">
+<meta property="og:url" content="https://p-art.swx2.workers.dev/edit.html">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="PART · 학생 작품 전시관">
+<meta name="twitter:description" content="수행평가로 만든 웹페이지·게임·도구를 링크 대신 작품처럼 걸어 두는 학생 전시관이에요.">
+<meta name="twitter:image" content="https://p-art.swx2.workers.dev/img/hero.jpg">
 <script>try{if(localStorage.getItem('theme')==='light')document.documentElement.classList.add('light')}catch(e){}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600;700&family=Noto+Sans+KR:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400&display=swap">
@@ -20,6 +31,7 @@
     <p style="color:var(--mute);font-weight:300;margin:16px 0 36px">1분이면 끝나요. 오른쪽 카드가 입력하는 대로 바뀌어요.</p>
 
     <!-- novalidate: 브라우저 기본 말풍선 대신 아래 bad()가 한국어로 안내해요. -->
+    <div class="draft glass hide" id="draft" role="status" style="margin-bottom:22px"><span>임시 저장한 글을 불러왔어요.</span><button type="button" id="draftClear">지우기</button></div>
     <form class="form" id="form" novalidate>
       <label class="drop"><input type="file" name="images" accept="image/jpeg,image/png,image/webp" multiple><b>대표 사진 올리기</b><span id="photoHint">jpg·png·webp, 5장까지. 첫 장이 대표 사진이에요</span></label>
       <div class="f"><label for="f-title">작품 이름 <span class="req">필수</span></label><input class="field-in" id="f-title" name="title" maxlength="40" placeholder="예: 급식 레이더"></div>
@@ -31,6 +43,10 @@
       <fieldset class="f tagbox" id="cats"><legend>분야</legend></fieldset>
       <div class="f"><label for="f-tags">쓴 기술 (쉼표로 구분)</label><input class="field-in" id="f-tags" name="tags" placeholder="예: HTML, CSS, JavaScript"></div>
       <div class="f"><label for="f-gh">GitHub 주소</label><input class="field-in" id="f-gh" name="github" type="text" inputmode="url" placeholder="https://github.com/"></div>
+      <div class="f"><label for="f-mem">함께 만든 친구 (5명까지)</label>
+        <div class="tagbox" id="mates" style="margin-bottom:10px"></div>
+        <input class="field-in" id="f-mem" autocomplete="off" placeholder="닉네임으로 찾기">
+        <div class="tagbox" id="found" style="margin-top:10px" aria-live="polite"></div></div>
       <div class="f"><label class="check"><input type="checkbox" id="pub" checked> 전시관에 공개하기</label></div>
       <p class="form-msg" id="err" role="status"></p>
       <div style="display:flex;gap:10px;flex-wrap:wrap">
@@ -60,6 +76,8 @@
 const id = param('id'), form = $('#form'); // id가 있으면 고치기, 없으면 새로 걸기예요
 const picked = new Set(); // 고른 분야들
 let oldImg = null, blobUrl = null; // 원래 대표 사진, 새로 고른 사진의 임시 주소
+const mates = new Map(); // 함께 만든 친구: 회원 번호 → 닉네임
+let me = null;
 
 function drawCats() {
   $('#cats').innerHTML = '<legend>분야</legend>' + CATS.map((c) =>
@@ -68,7 +86,7 @@ function drawCats() {
 $('#cats').onclick = (e) => {
   const b = e.target.closest('[data-cat]'); if (!b) return;
   picked.has(b.dataset.cat) ? picked.delete(b.dataset.cat) : picked.add(b.dataset.cat);
-  drawCats(); preview();
+  drawCats(); preview(); saveDraft();
 };
 
 function preview() {
@@ -78,6 +96,58 @@ function preview() {
   $('#pvTag').textContent = [...picked][0] || '작품';
 }
 form.addEventListener('input', preview);
+
+// ── 함께 만든 친구: 닉네임으로 찾아서 칩으로 더하고, 칩을 누르면 빼요 ──
+function drawMates() {
+  $('#mates').innerHTML = [...mates].map(([uid, nick]) =>
+    `<button type="button" class="chip" data-rm="${uid}" aria-pressed="true" aria-label="${esc(nick)} 빼기">${esc(nick)} ✕</button>`).join('');
+}
+let mt;
+$('#f-mem').oninput = (e) => {
+  clearTimeout(mt);
+  const q = e.target.value.trim();
+  if (!q) return ($('#found').innerHTML = '');
+  mt = setTimeout(async () => {
+    const rows = (await api('/api/users?q=' + encodeURIComponent(q)).catch(() => [])).filter((u) => u.id !== me.id && !mates.has(u.id));
+    $('#found').innerHTML = rows.length ? rows.map((u) => `<button type="button" class="chip" data-add="${u.id}" data-nick="${esc(u.nickname)}">+ ${esc(u.nickname)}</button>`).join('')
+      : '<span style="color:var(--dim);font-size:13.5px">찾는 친구가 없어요</span>';
+  }, 250);
+};
+$('#f-mem').onkeydown = (e) => { if (e.key === 'Enter') e.preventDefault(); }; // 엔터로 폼이 제출되지 않게
+$('#found').onclick = (e) => {
+  const b = e.target.closest('[data-add]'); if (!b) return;
+  if (mates.size >= 5) return toast('함께 만든 친구는 5명까지예요');
+  mates.set(Number(b.dataset.add), b.dataset.nick);
+  b.remove(); drawMates();
+};
+$('#mates').onclick = (e) => {
+  const b = e.target.closest('[data-rm]'); if (!b) return;
+  mates.delete(Number(b.dataset.rm)); drawMates();
+};
+
+// ── 임시 저장: 글자 칸만 브라우저(localStorage)에 0.5초마다 모아 저장해요. 사진은 저장하지 않아요 ──
+const DRAFT = 'part-draft:' + (id || 'new');
+const TEXTS = ['title', 'summary', 'maker', 'url', 'target', 'detail', 'tags', 'github'];
+let dt;
+function saveDraft() {
+  clearTimeout(dt);
+  dt = setTimeout(() => {
+    const d = Object.fromEntries(TEXTS.map((k) => [k, form[k].value]));
+    d.cats = [...picked];
+    try { localStorage.setItem(DRAFT, JSON.stringify(d)); } catch {} // 시크릿 모드 등에서 막혀도 괜찮아요
+  }, 500);
+}
+const dropDraft = () => { clearTimeout(dt); try { localStorage.removeItem(DRAFT); } catch {} };
+function loadDraft() {
+  let d = null;
+  try { d = JSON.parse(localStorage.getItem(DRAFT)); } catch {}
+  if (!d) return;
+  TEXTS.forEach((k) => { if (typeof d[k] === 'string') form[k].value = d[k]; });
+  if (Array.isArray(d.cats)) { picked.clear(); d.cats.filter((c) => CATS.includes(c)).forEach((c) => picked.add(c)); }
+  $('#draft').classList.remove('hide');
+}
+form.addEventListener('input', (e) => { if (e.target.name) saveDraft(); });
+$('#draftClear').onclick = () => { dropDraft(); location.reload(); }; // 지우고 원래 내용으로 다시 열어요
 
 // 고른 첫 사진을 업로드 전에 미리보기로 보여 줘요. 예전 임시 주소는 revoke로 버려서 메모리를 아껴요.
 form.images.onchange = () => {
@@ -99,7 +169,7 @@ $('#fill').onclick = () => {
   form.detail.value = '친구가 보낸 작품 링크를 열어 보지 않게 되는 게 아쉬워서, 카드처럼 걸어 두는 전시관을 만들었어요.';
   form.tags.value = 'HTML, CSS, JavaScript';
   picked.clear(); picked.add('웹사이트'); picked.add('학교생활');
-  drawCats(); preview();
+  drawCats(); preview(); saveDraft();
 };
 
 // 틀린 칸에 빨간 테두리(.bad)와 포커스를 주고 안내 문구를 보여 줘요.
@@ -144,19 +214,21 @@ form.onsubmit = async (e) => {
   for (const k of ['url', 'github']) data.set(k, form[k].value.trim());
   data.set('cats', [...picked].join(','));
   data.set('is_public', $('#pub').checked ? '1' : '0');
+  data.set('members', [...mates.keys()].join(','));
   try {
     // 새 작품은 홍보 키트로, 고친 작품은 상세 페이지로 가요.
     const r = await api(id ? '/api/projects/' + id : '/api/projects', id ? 'PUT' : 'POST', data);
+    dropDraft(); // 저장했으니 임시 저장은 지워요
     location.href = id ? '/project.html?id=' + r.id : '/kit.html?id=' + r.id;
   } catch (err) { bad(null, err.message); $('#submit').disabled = false; }
 };
 
 // 로그인해야 쓸 수 있어요. 고치기라면 내 작품인지 확인하고 원래 값을 채워요.
 (async () => {
-  const me = await nav();
+  me = await nav();
   if (!me) return toLogin();
   drawCats();
-  if (!id) { form.maker.value = me.nickname; preview(); return; }
+  if (!id) { form.maker.value = me.nickname; loadDraft(); drawCats(); preview(); return; }
 
   const p = await api('/api/projects/' + id).catch(() => null);
   if (!p || !p.mine) return (location.href = '/');
@@ -168,10 +240,12 @@ form.onsubmit = async (e) => {
   for (const k of ['title', 'summary', 'maker', 'url', 'target', 'detail', 'github']) form[k].value = p[k] || '';
   form.tags.value = p.tags.join(', ');
   p.cats.forEach((c) => picked.add(c));
+  p.members.forEach((m) => mates.set(m.id, m.nickname));
   $('#pub').checked = !!p.is_public;
   oldImg = p.images[0] || null;
   $('#pvImg').src = oldImg || FALLBACK_IMG;
-  drawCats(); preview();
+  loadDraft(); // 서버 값 위에 쓰던 글을 덮어요
+  drawCats(); drawMates(); preview();
 })();
 </script>
 </body>

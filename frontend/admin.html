@@ -1,0 +1,65 @@
+<!doctype html>
+<!-- [파일 개요] 관리(/admin.html): 관리자만 들어와요. 신고가 쌓인 작품을 보고 숨기기·되살리기·신고 지우기를 해요. -->
+<html lang="ko">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>관리 · PART</title>
+<!-- 공유 미리보기 기본값. 작품 페이지는 서버(backend/src/og.js)가 작품마다 바꿔 보내요. -->
+<meta name="description" content="수행평가로 만든 웹페이지·게임·도구를 링크 대신 작품처럼 걸어 두는 학생 전시관이에요.">
+<meta property="og:type" content="website"><meta property="og:site_name" content="PART">
+<meta property="og:title" content="PART · 학생 작품 전시관">
+<meta property="og:description" content="수행평가로 만든 웹페이지·게임·도구를 링크 대신 작품처럼 걸어 두는 학생 전시관이에요.">
+<meta property="og:image" content="https://p-art.swx2.workers.dev/img/hero.jpg">
+<meta property="og:url" content="https://p-art.swx2.workers.dev/admin.html">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="PART · 학생 작품 전시관">
+<meta name="twitter:description" content="수행평가로 만든 웹페이지·게임·도구를 링크 대신 작품처럼 걸어 두는 학생 전시관이에요.">
+<meta name="twitter:image" content="https://p-art.swx2.workers.dev/img/hero.jpg">
+<script>try{if(localStorage.getItem('theme')==='light')document.documentElement.classList.add('light')}catch(e){}</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600;700&family=Noto+Sans+KR:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400&display=swap">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body class="sr">
+<div id="nav"></div>
+<main class="wrap page-top">
+  <div class="sec-head" style="margin-bottom:34px"><div><p class="mono">Admin</p><h1 class="h2">신고 <b>살펴보기</b></h1></div></div>
+  <div class="reps" id="list"></div>
+</main>
+<div id="foot"></div>
+
+<script src="/js/app.js"></script>
+<script>
+// 신고 목록을 그려요. 숨긴 작품은 '다시 보이기', 아니면 '숨기기' 버튼이 보여요.
+async function load() {
+  const rows = await api('/api/admin/reports');
+  $('#list').innerHTML = rows.length ? rows.map((r) => `<article class="rep glass">
+      <div class="row"><span>${r.hidden ? '숨김 처리됨' : '보이는 중'} · 신고 ${r.reports}건</span><span>by ${esc(r.author)}</span></div>
+      <h2 class="rep-t"><a href="/project.html?id=${r.id}">${esc(r.title)}</a></h2>
+      ${r.reasons.length ? `<ul class="rep-why">${r.reasons.map((w) => `<li>${esc(w)}</li>`).join('')}</ul>` : ''}
+      <div class="owner">
+        <button class="btn" type="button" data-hide="${r.id}" data-to="${r.hidden ? 0 : 1}">${r.hidden ? '다시 보이기' : '숨기기'}</button>
+        ${r.reports ? `<button class="btn btn-danger" type="button" data-clear="${r.id}">신고 지우기</button>` : ''}
+      </div></article>`).join('')
+    : '<div class="empty glass"><p>살펴볼 신고가 없어요.</p></div>';
+}
+
+$('#list').addEventListener('click', async (e) => {
+  const h = e.target.closest('[data-hide]'), x = e.target.closest('[data-clear]');
+  try {
+    if (h) { await api(`/api/admin/projects/${h.dataset.hide}/hide`, 'POST', { hidden: Number(h.dataset.to) }); toast(h.dataset.to === '1' ? '숨겼어요' : '다시 보이게 했어요'); }
+    else if (x && confirm('이 작품의 신고를 모두 지울까요?')) { await api(`/api/admin/projects/${x.dataset.clear}/reports`, 'DELETE'); toast('신고를 지웠어요'); }
+    else return;
+    load();
+  } catch (err) { toast(err.message); }
+});
+
+(async () => {
+  const me = await nav();
+  if (!me) return toLogin();
+  if (!me.isAdmin) return ($('#list').innerHTML = notFound('관리자만 볼 수 있어요.'));
+  load();
+})();
+</script>
+</body>
+</html>
