@@ -1,11 +1,8 @@
 <div align="center">
 
-# 🖼️ PART
+# P - ART
 
-**학생 프로젝트를 걸어 두는 온라인 전시관**
-
-수행평가로 만든 웹페이지·게임·도구를 링크 대신 **작품처럼** 걸어 두고,<br/>
-친구들은 써 보고 ▲ 응원과 한 줄 감상을 남겨요.
+**자신만의 작품을 만든 사람들의 작은 발자취**
 
 [![CI](https://github.com/10x4hs/p-art/actions/workflows/ci.yml/badge.svg)](https://github.com/10x4hs/p-art/actions/workflows/ci.yml)
 ![Cloudflare Workers](https://img.shields.io/badge/Cloudflare-Workers-F38020?logo=cloudflare&logoColor=white)
