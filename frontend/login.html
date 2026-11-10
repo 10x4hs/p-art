@@ -1,4 +1,5 @@
 <!doctype html>
+<!-- [파일 개요] 로그인 페이지(/login.html) — app.js의 stepForm()을 사용해 1단계 이메일 → 2단계 비밀번호를 순서대로 입력받아 로그인해요. -->
 <html lang="ko">
 <head>
 <meta charset="utf-8">
@@ -15,6 +16,7 @@
 <header><a class="auth-logo" href="/" aria-label="PART 처음으로"><span class="p">P</span><span class="art">ART</span></a></header>
 <main>
 <h1 class="vh">로그인</h1>
+<!-- [뜻/역할] stepForm()이 단계별 입력칸을 그려 넣을 영역이에요. -->
 <div id="step" style="width:100%;display:flex;flex-direction:column;align-items:center;gap:18px"></div>
 </main>
 <footer><span>프로젝트를 작품처럼 거는 곳</span><span aria-hidden="true">·</span><a href="/signup.html">가입 신청</a></footer>
@@ -22,17 +24,24 @@
 <script src="/shared/categories.js"></script>
 <script src="/js/app.js"></script>
 <script>
-// 다른 페이지에서 넘어왔으면 로그인 후 그 페이지로 돌아간다 (같은 사이트 주소만)
+// [뜻/역할] 다른 페이지(예: 작품 걸기나 응원 버튼)에서 로그인이 필요해 넘어왔다면 `?next=/edit.html`처럼 돌아갈 주소가 적혀 있어요.
+// [보안 이유] `startsWith('/') && !startsWith('//')`로 검사해서, 해커가 `?next=//evil.com`처럼 외부 피싱 사이트 주소를 넣는 '오픈 리다이렉트(Open Redirect)' 공격을 막아요!
 const next = (param('next') || '/').startsWith('/') && !(param('next') || '').startsWith('//') ? (param('next') || '/') : '/';
+
+// [뜻/역할] 1단계(이메일 형식 확인) → 2단계(비밀번호 입력 확인) 후 `/api/login`으로 로그인 요청을 보내요.
 const flow = stepForm([
   { ph: '이메일', type: 'email', auto: 'email', mode: 'email', check: (v) => { if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim())) throw new Error('이메일 주소를 확인해 주세요'); } },
   { ph: '비밀번호', type: 'password', auto: 'current-password', check: (v) => { if (!v) throw new Error('비밀번호를 입력해 주세요'); } },
 ], async ([email, password]) => {
   try {
     const u = await api('/api/login', 'POST', { email: email.trim(), password });
+    // [뜻/역할] 로그인에 성공하면 환영 문구와 함께 원래 보던 곳(next)으로 돌아가는 링크를 띄우고 포커스를 줘요(엔터만 쳐도 바로 이동 가능!).
     $('#step').innerHTML = `<div class="auth-done"><p class="t">어서 와요, ${esc(u.nickname)}</p><a href="${esc(next)}">${next === '/' ? '전시관으로' : '보던 곳으로'} <span aria-hidden="true">→</span></a></div>`;
     $('.auth-done a').focus();
-  } catch (err) { flow.goTo(1, err.message); }
+  } catch (err) {
+    // [뜻/역할] 실패하면 2단계(인덱스 1, 비밀번호 칸)에 에러 메시지를 표시해요.
+    flow.goTo(1, err.message);
+  }
 });
 </script>
 </body>
