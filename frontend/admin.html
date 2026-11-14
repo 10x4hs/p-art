@@ -1,10 +1,15 @@
 <!doctype html>
-<!-- [파일 개요] 관리(/admin.html): 관리자만 들어와요. 신고가 쌓인 작품을 보고 숨기기·되살리기·신고 지우기를 해요. -->
+<!-- ==========================================================================
+  [파일 개요] 관리자 전용 신고 검토 페이지(`/admin.html`)예요.
+  - 관리자(`me.isAdmin === true`)만 접근할 수 있으며, 신고가 접수되었거나 숨김 처리된 작품들의
+    신고 건수·사유 목록을 확인하고 '숨기기 / 다시 보이기' 또는 '신고 지우기'를 처리해요.
+  [비유] 전시관 관리자가 신고 접수함을 열어 보고 조치하는 운영 데스크예요.
+=========================================================================== -->
 <html lang="ko">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>관리 · PART</title>
-<!-- 공유 미리보기 기본값. 작품 페이지는 서버(backend/src/og.js)가 작품마다 바꿔 보내요. -->
+<!-- [뜻/역할] 공유 미리보기 기본 메타 태그예요. -->
 <meta name="description" content="수행평가로 만든 웹페이지·게임·도구를 링크 대신 작품처럼 걸어 두는 학생 전시관이에요.">
 <meta property="og:type" content="website"><meta property="og:site_name" content="PART">
 <meta property="og:title" content="PART · 학생 작품 전시관">
@@ -30,7 +35,8 @@
 
 <script src="/js/app.js"></script>
 <script>
-// 신고 목록을 그려요. 숨긴 작품은 '다시 보이기', 아니면 '숨기기' 버튼이 보여요.
+// [뜻/역할] 서버에서 신고된 작품 목록(`GET /api/admin/reports`)을 받아 와 카드 형태(`.rep`)로 그려요.
+// [문법] 현재 숨겨진 작품(`r.hidden === 1`)이면 `'다시 보이기'`(`data-to="0"`) 버튼을, 보이는 작품이면 `'숨기기'`(`data-to="1"`) 버튼을 표시해요.
 async function load() {
   const rows = await api('/api/admin/reports');
   $('#list').innerHTML = rows.length ? rows.map((r) => `<article class="rep glass">
@@ -44,6 +50,7 @@ async function load() {
     : '<div class="empty glass"><p>살펴볼 신고가 없어요.</p></div>';
 }
 
+// [뜻/역할] '숨기기/다시 보이기'(`[data-hide]`)와 '신고 지우기'(`[data-clear]`) 버튼 클릭을 받아 처리한 뒤 목록을 새로 고쳐요.
 $('#list').addEventListener('click', async (e) => {
   const h = e.target.closest('[data-hide]'), x = e.target.closest('[data-clear]');
   try {
@@ -54,6 +61,7 @@ $('#list').addEventListener('click', async (e) => {
   } catch (err) { toast(err.message); }
 });
 
+// [뜻/역할] 페이지 진입 시 로그인 여부와 관리자 권한(`me.isAdmin`)을 먼저 확인하고, 관리자가 아니면 안내 상자를 보여 줘요.
 (async () => {
   const me = await nav();
   if (!me) return toLogin();

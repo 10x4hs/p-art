@@ -1,324 +1,141 @@
-# PART 친절한 코드 해설서 (초보자용)
+# PART 친절한 코드 해설서 (초보자용 · 전 파일 완전판)
 
-> 프로그래밍을 막 배우기 시작한 팀원도 PART 코드를 **스스로 읽고 고칠 수 있게** 쓴 설명서예요.
-> 그림으로 보는 전체 흐름은 [docs/WORKFLOW.md](docs/WORKFLOW.md)에 있어요. 이 문서는 **코드 한 줄 한 줄**에 집중해요.
+> 프로그래밍을 막 배우기 시작한 팀원도 PART 프로젝트의 **모든 파일(24개)을 한 줄 한 줄 읽고 스스로 고칠 수 있게** 작성한 해설서예요.
+> 모든 소스 파일 자체에도 `[파일 개요]`, `[비유]`, `[뜻/역할]`, `[문법]`, `[작성 이유]` 주석이 빠짐없이 달려 있어요.
+> 그림으로 보는 전체 흐름과 다이어그램은 [docs/WORKFLOW.md](docs/WORKFLOW.md)에 있어요.
 
 ---
 
 ## 1. 이 프로그램은 무엇을 하나요? (쉬운 설명)
 
-- **한 줄 요약**: 학교 복도에 작품을 거는 것처럼, 학생이 만든 웹사이트·게임을 **카드로 걸어 두는 온라인 전시관**이에요.
-- **비유**: 식당으로 생각해 보세요.
-  - `frontend/` = **홀** (손님이 보는 메뉴판·테이블) — HTML, CSS, 브라우저 JS
-  - `backend/src/` = **주방** (주문을 받아 요리하고 창고에서 재료를 꺼냄) — Cloudflare Worker
-  - **D1** = **장부 창고** (가입 정보·작품·감상) — SQLite 데이터베이스
-  - **R2** = **사진 창고** — 키(이름표)로 사진 파일을 넣고 꺼내는 보관함
-  - `fetch('/api/...')` = **주문서** — 홀이 주방에 보내는 요청
-  - **Cloudflare** = 건물 전체를 빌려주는 회사. 손님이 오면 메뉴판(화면 파일)은 입구에서 바로 주고, 주문(`/api/…`)만 주방으로 보내요.
-- **입력과 출력**: 사용자가 이메일·작품 정보·사진을 넣으면 → Worker가 검사해서 D1·R2에 저장하고 → 화면은 저장된 작품을 카드로 보여 줘요.
+- **한 줄 요약**: 학교 복도에 작품을 거는 것처럼, 학생이 수행평가나 동아리에서 만든 웹사이트·게임·도구를 **작품 카드로 걸어 두는 온라인 전시관**이에요.
+- **일상 비유 (미술관 & 레스토랑)**:
+  - `frontend/` (HTML 9개 + `style.css` + `js/app.js`) = **전시실 홀** (관람객이 보는 액자·조명·안내판)
+  - `backend/src/` (Cloudflare Worker 파일 8개) = **안내 데스크 & 큐레이터실** (출입증 확인, 작품 접수, 응원·북마크·방명록·신고 처리)
+  - **Cloudflare D1** (`backend/migrations/*.sql`) = **전시관 장부 창고** (SQLite 기반 DB: 회원·작품·사진키·응원·감상·세션·팀원·북마크·신고 9개 표)
+  - **Cloudflare R2** (`p-art-uploads`) = **사진 원본 보관 금고** (작품 스크린샷 파일 자체를 UUID 키로 보관)
+  - `shared/categories.json` = **공통 분야 스티커북** (서버와 화면이 똑같이 쓰는 분야 목록)
+  - `scripts/smoke-test.js` = **개관 전 자동 점검 로봇** (59가지 기능을 처음부터 끝까지 자동으로 눌러 보는 테스트)
 
 ---
 
-## 2. 전체 실행 순서와 흐름도 (How It Works)
+## 2. 전체 파일 지도 (24개 파일 한눈에 보기)
+
+| 분류 | 파일 경로 | 역할 한 줄 요약 |
+| :--- | :--- | :--- |
+| **설정** | `wrangler.jsonc` | Cloudflare Workers·Static Assets·D1·R2·관리자 이메일 설정 |
+| **공용 데이터** | `shared/categories.json` | 작품 분야 6가지 목록 (서버 검증 + 화면 칩 버튼 공용) |
+| **DB 마이그레이션** | `backend/migrations/0001_init.sql` | 기본 표 6개(`users`, `projects`, `images`, `likes`, `comments`, `sessions`)와 색인 5개 생성 |
+| **DB 마이그레이션** | `backend/migrations/0002_features.sql` | 확장 기능 열(`views`, `hidden`)과 표 3개(`project_members`, `bookmarks`, `reports`) 추가 |
+| **백엔드 코어** | `backend/src/index.js` | Worker 시작점: 라우터 조립, `/project` OG 연결, `/uploads/:key` R2 사진 서빙, 공통 에러 처리 |
+| **백엔드 코어** | `backend/src/util.js` | 공통 도구: 에러 생성(`bad`), JSON 읽기(`readJson`), URL 검사(`isHttp`), IP 추출, 관리자 확인(`isAdmin`) |
+| **백엔드 코어** | `backend/src/session.js` | 로그인 세션: `sid` 쿠키 발급(`startSession`)·검증 및 자동 연장(`loadSession`)·삭제(`endSession`)·검문소(`needLogin`) |
+| **백엔드 코어** | `backend/src/password.js` | 비밀번호 보안: Web Crypto `PBKDF2`(SHA-256, 10만 회 + 무작위 소금) 해시 생성 및 상수-시간 비교 |
+| **백엔드 코어** | `backend/src/og.js` | 카톡·SNS 공유 미리보기: `HTMLRewriter`로 `/project.html?id=`에 작품별 Open Graph 메타 태그 실시간 주입 |
+| **백엔드 라우트** | `backend/src/routes/auth.js` | 회원 API: 가입·로그인·로그아웃·내 정보 수정·회원 탈퇴(R2 사진 정리 포함)·팀원 닉네임 검색·공개 프로필 |
+| **백엔드 라우트** | `backend/src/routes/projects.js` | 작품 API: 목록 검색/필터·상세/조회수·등록/수정/삭제·팀원·응원/북마크 토글·한 줄 감상(도배 방지)·신고(3회 자동 숨김) |
+| **백엔드 라우트** | `backend/src/routes/admin.js` | 관리자 API: 신고/숨김 작품 목록 조회, 수동 숨김/해제, 신고 기록 비우기 |
+| **프론트 공통** | `frontend/js/app.js` | 전 페이지 공통 JS: DOM 선택자(`$`), XSS 방지(`esc`), `api()`, 테마 전환, 상단 메뉴(`nav`), 카드(`card`), 응원 위임, 필터, `stepForm` |
+| **프론트 스타일** | `frontend/style.css` | 다크/라이트 테마 CSS 변수, 유리 질감(`.glass`), 반응형 컨테이너 쿼리(`@container`) 디자인 |
+| **프론트 화면** | `frontend/index.html` | 홈(`/`): 히어로 상위 3작품 스택, 응원 1등 '이번 주의 작품', 작품 6개 미리보기, 3단계 사용법 |
+| **프론트 화면** | `frontend/works.html` | 전체 전시관: 모든 공개 작품 검색·분야·정렬 및 URL 쿼리 동기화(`history.replaceState`) |
+| **프론트 화면** | `frontend/project.html` | 작품 상세: 소개·응원·북마크·샌드박스 iframe 미리보기·통계·팀원·한 줄 감상 방명록·신고 |
+| **프론트 화면** | `frontend/edit.html` | 작품 걸기/고치기: 실시간 카드 미리보기, 팀원 검색/칩, `localStorage` 자동 임시 저장, `<canvas>` 사진 압축(`shrink`) |
+| **프론트 화면** | `frontend/kit.html` | 홍보 키트: 작품 등록 직후 단톡방·인스타 스토리·한 줄 홍보 문구 3종 자동 생성 및 원클릭 복사 |
+| **프론트 화면** | `frontend/login.html` | 로그인: `stepForm` 2단계(이메일 → 비밀번호) 대화형 입력 및 오픈 리다이렉트 방지 |
+| **프론트 화면** | `frontend/signup.html` | 회원가입: `stepForm` 3단계(이메일 → 비밀번호 → 닉네임) 입력 및 가입 즉시 자동 로그인 |
+| **프론트 화면** | `frontend/profile.html` | 프로필/내 공간: 내 정보 수정, 올린 작품, 작품별 조회/응원/감상/북마크 통계 표, 팀 참여 작품, 북마크 모아 보기 |
+| **프론트 화면** | `frontend/admin.html` | 관리자 페이지: 신고 접수 및 숨김 작품 사유 확인, 숨기기/다시 보이기, 신고 지우기 |
+| **자동 테스트** | `scripts/smoke-test.js` | 로컬 D1·R2 임시 환경에서 59개 시나리오를 처음부터 끝까지 자동 검증하는 스모크 테스트 |
+
+---
+
+## 3. 전체 실행 순서와 데이터의 여행 (Step-by-Step Flow)
 
 | 순서 | 위치 / 함수 | 하는 일 (쉬운 설명) |
 | :--- | :--- | :--- |
-| 1단계 | 브라우저가 `https://p-art.swx2.workers.dev/` 요청 | Cloudflare가 `frontend/index.html`을 **그대로** 보내요 (Worker 안 거침) |
-| 2단계 | `index.html` 안의 `<script>` | `/shared/categories.js`, `/js/app.js`를 불러와요 |
-| 3단계 | `app.js`의 `nav()` | `fetch('/api/me')`로 "나 로그인했어?"를 물어봐요 |
-| 4단계 | `wrangler.jsonc`의 `run_worker_first` | `/api/…`로 시작하니 Worker(`backend/src/index.js`)로 보내요 |
-| 5단계 | `index.js`의 `loadSession` | 쿠키의 `sid`로 D1 `sessions` 표를 찾아 "누구인지(uid)"를 알아내요 |
-| 6단계 | `routes/auth.js`의 `GET /me` | 내 정보를 D1에서 꺼내 JSON으로 돌려줘요 |
-| 7단계 | `index.html`의 `list()` | `fetch('/api/projects?sort=hot')`로 작품 목록을 주문해요 |
-| 8단계 | `routes/projects.js`의 `GET /` | SQL 한 번으로 작품 + 작성자 + 사진 + 응원 수를 꺼내요 |
-| 9단계 | `app.js`의 `card()` | JSON을 카드 HTML로 바꿔 화면에 끼워 넣어요 |
-| 10단계 | `<img src="/uploads/키">` | Worker가 R2에서 사진을 꺼내 보내요 |
+| 1단계 | 브라우저가 `https://p-art.swx2.workers.dev/` 접속 | Cloudflare Static Assets가 `frontend/index.html`을 Worker를 거치지 않고 초고속으로 바로 내려줘요 |
+| 2단계 | `index.html`의 `<head>` 인라인 스크립트 | 화면이 그려지기 전에 `localStorage.getItem('theme')`을 확인해 밝은 테마(`.light`)를 즉시 켜서 화면 깜빡임을 막아요 |
+| 3단계 | `/shared/categories.js` & `/js/app.js` 로드 | Worker가 `shared/categories.json`을 `window.CATS`로 내려주고, 공통 도구(`app.js`)가 준비돼요 |
+| 4단계 | `app.js`의 `nav()` → `GET /api/me` | `wrangler.jsonc`의 `run_worker_first` 규칙에 따라 `/api/*` 요청이 Worker(`backend/src/index.js`)로 들어가요 |
+| 5단계 | `session.js`의 `loadSession` 미들웨어 | 브라우저 쿠키의 `sid` 번호로 D1 `sessions` 표를 조회해 로그인한 회원 번호(`uid`)를 찾아 `c.set('uid', ...)`에 적어 둬요 |
+| 6단계 | `routes/auth.js`의 `GET /api/me` | 로그인 상태면 닉네임과 관리자 여부(`isAdmin`)를 돌려주고, 상단 메뉴에 내 닉네임(관리자면 '관리' 포함)을 그려요 |
+| 7단계 | `index.html`의 `loadTop()` & `list()` | `GET /api/projects?sort=hot`을 호출해 응원 상위 3개 히어로 카드, 1등 '이번 주의 작품', 전시 목록 6개를 그려요 |
+| 8단계 | `<img src="/uploads/키">` 로드 | Worker(`index.js`)가 R2 버킷(`c.env.IMAGES`)에서 사진을 꺼내 1년 캐시(`immutable`) 헤더와 함께 내려줘요 |
+| 9단계 | 카톡에 `/project.html?id=3` 링크 공유 | 메신저 봇이 접속하면 `og.js`의 `projectPage()`가 먼저 받아 `HTMLRewriter`로 그 작품의 제목·소개·사진을 `<meta property="og:...">`에 채워 보내요 |
 
 ---
 
-## 3. 핵심 문법 및 키워드 사전 (초보자 필수 지식)
+## 4. 핵심 문법 및 키워드 사전 (초보자 필수 지식)
 
-| 키워드 / 기호 | 뜻 | PART에서의 예 | 주의할 점 |
-|---|---|---|---|
-| `import … from '…'` | 다른 파일·라이브러리를 **가져와** 쓰기 | `import { Hono } from 'hono'` | 파일 이름 끝에 `.js`까지 써요 |
-| `export default …` | 이 파일의 **대표로 내보낼 것** | `export default app` | 하나만 가능 |
-| `export function …` | 이름을 붙여 **여러 개** 내보내기 | `export async function hashPassword` | 가져올 때 `{ }` 안에 이름 |
-| `const` / `let` | 바꾸지 않을 이름 / 바뀔 수 있는 이름 | `const app = new Hono()` | `const` 객체 **안의 내용**은 바꿀 수 있어요 |
-| `(a) => …` | **화살표 함수** — 짧게 쓰는 함수 | `(c) => c.json({ ok: true })` | `{ }`가 없으면 결과를 바로 돌려줘요 |
-| `` `글자 ${값}` `` | **템플릿 문자열** — 글자 안에 값 끼우기 | `` `pbkdf2$${ITERATIONS}$…` `` | 따옴표가 아니라 백틱(`) |
-| `async` / `await` | 오래 걸리는 일(DB, 네트워크)이 **끝날 때까지 기다리기** | `await c.env.DB.prepare(…).first()` | D1은 전부 `await`가 필요해요 |
-| `c` (Hono) | 요청 하나에 대한 **모든 것이 든 상자** | `c.req.param('id')`, `c.json(…)`, `c.env.DB` | Express의 `req` + `res`를 합친 것 |
-| `c.env` | Cloudflare가 연결해 준 **자원** | `c.env.DB`(D1), `c.env.IMAGES`(R2) | 이름은 `wrangler.jsonc`의 `binding` |
-| `c.get` / `c.set` | 요청 하나 동안 쓰는 **메모장** | `c.set('uid', 3)` → `c.get('uid')` | 다음 요청엔 사라져요 |
-| 미들웨어 | 요청이 지나가는 **검문소** `(c, next) => …` | `needLogin`, `mine` | 통과시키려면 `await next()` |
-| `throw` | 오류를 **던져서** 지금 일을 멈추기 | `throw bad('제목은 1~40자예요')` | `index.js`의 `onError`가 받아요 |
-| `?.` | 앞이 비어 있으면(`null`) **그냥 넘어가기** | `metadata?.type` | 오류 대신 `undefined` |
-| `...obj` | 객체·배열 **펼치기**(복사) | `bind(...values, id)` | 배열을 낱개로 펼쳐 넘겨요 |
-| `!!x` | 아무 값이나 **true/false로** | `liked: !!p.liked` | 값이 있으면 true |
-| 쿠키 · 세션 | 쿠키 = 브라우저가 가진 **번호표**, 세션 = 서버의 **장부** | `sid` 쿠키 ↔ `sessions` 표 | 번호표엔 번호만, 누구인지는 서버에 |
-| SQL `?` / `?1` | 값을 **안전하게** 끼우는 자리 | `WHERE email = ?` + `.bind(email)` | 글자를 직접 이어 붙이면 해킹(SQL 인젝션) 위험 |
-| 해시(PBKDF2) | 비밀번호를 **되돌릴 수 없게** 섞기 | `hashPassword(pw)` | 원래 비밀번호는 저장하지 않아요 |
-| `FormData` | 글 + **파일**을 한 번에 보내는 상자 | 작품 등록 | JSON으로는 사진을 못 보내요 |
+| 키워드 / 기호 | 뜻 | PART에서의 예 | 왜 쓰나요? / 주의할 점 |
+| :--- | :--- | :--- | :--- |
+| `import … from '…'` | 다른 파일이나 라이브러리의 기능을 **가져오기** | `import { Hono } from 'hono'` | 역할을 여러 파일로 나누어 깔끔하게 관리해요 |
+| `export` / `export default` | 이 파일의 함수·객체를 밖에서 쓸 수 있게 **내보내기** | `export function bad(...)` | `default`는 파일당 1개, 일반 `export`는 여러 개 가능해요 |
+| `const` / `let` | 다시 대입하지 않을 상수(`const`) / 값이 바뀔 변수(`let`) | `const PORT = 8799; let who = 'a';` | 실수로 변수가 덮어써지는 버그를 막기 위해 기본은 `const`를 써요 |
+| `(a) => 식` | **화살표 함수** (함수를 짧게 쓰는 문법) | `const split = (v) => (v ? v.split(',') : [])` | 중괄호 `{}` 없이 쓰면 계산 결과를 자동으로 `return`해요 |
+| `async` / `await` | DB 조회나 네트워크 통신이 **끝날 때까지 기다리기** | `const p = await api('/api/projects')` | `await`가 없으면 결과가 오기 전에 다음 줄로 넘어가 버려요 |
+| `c` (Hono Context) | 요청(`c.req`)·응답(`c.json`)·환경(`c.env`)이 모두 담긴 **만능 상자** | `c.req.param('id')`, `c.env.DB` | Express의 `req`, `res`를 하나로 합쳐 둔 객체예요 |
+| `?.` (옵셔널 체이닝) | 앞의 값이 `null`이나 `undefined`여도 에러 내지 않고 넘어가기 | `$('#report')?.addEventListener(...)` | 내 작품에는 `#report` 버튼이 없는데, 이때 에러 없이 조용히 넘어가요 |
+| `...` (스프레드 연산자) | 배열이나 객체의 내용물을 낱개로 **펼치기** | `.bind(...values, id)` | 배열 안의 값 10개를 SQL `?` 자리에 순서대로 펼쳐 넘겨요 |
+| `!!값` (이중 부정) | 숫자(`0`/`1`)나 객체를 진짜 불리언(`false`/`true`)으로 바꾸기 | `liked: !!p.liked` | SQLite는 참/거짓을 `1`/`0`으로 주므로 화면용 `true`/`false`로 바꿔요 |
+| SQL `?` 바인딩 | SQL문에 값을 직접 이어 붙이지 않고 안전하게 끼워 넣는 빈칸 | `.prepare('... WHERE id = ?').bind(id)` | 해커가 입력칸에 SQL 명령어를 섞어 넣는 **SQL 인젝션** 공격을 100% 막아요 |
+| `esc(문자열)` | `<`, `>`, `&`, `"`, `'` 기호를 안전한 HTML 문자로 치환 | `<h3>${esc(p.title)}</h3>` | 누군가 제목에 `<script>`를 넣어 실행시키는 **XSS 해킹**을 막아요 |
 
 ---
 
-## 4. 📝 한 줄 한 줄 완벽 해설 (Line-by-Line Breakdown)
+## 5. 📝 파일별 핵심 코드 & 설계 이유 완벽 해설
 
-### 4-1. `wrangler.jsonc` — Cloudflare에게 주는 설명서
+### 5-1. `wrangler.jsonc` — 정적 파일과 Worker 역할 나누기
+- `assets.directory: "./frontend"`: HTML·CSS·JS·기본 이미지는 Cloudflare 정적 파일 서버가 바로 내려줘요.
+- `assets.run_worker_first: ["/api/*", "/uploads/*", "/shared/*", "/project", "/project.html"]`:
+  - `/api/*`(데이터 API), `/uploads/*`(R2 사진), `/shared/*`(공용 카테고리)는 Worker가 처리해요.
+  - 특히 `/project`와 `/project.html`도 여기에 포함시켜서, 카카오톡이나 디스코드가 링크 미리보기를 요청할 때 Worker(`backend/src/og.js`)가 먼저 가로채 작품별 Open Graph 메타 태그를 심어 줄 수 있게 했어요.
 
-```jsonc
-"name": "p-art",                          // ① Worker 이름 → 주소가 p-art.<계정>.workers.dev
-"main": "backend/src/index.js",           // ② 서버 코드의 시작 파일
-"compatibility_date": "2025-09-01",       // ③ "이 날짜 기준의 Cloudflare 동작으로 돌려 줘" — 나중에 Cloudflare가 바뀌어도 우리 코드가 안 깨지게
-"assets": {
-  "directory": "./frontend",              // ④ 화면 파일 폴더. 이 안의 파일은 Cloudflare가 그대로 보냄
-  "run_worker_first": ["/api/*", "/uploads/*", "/shared/*"]
-                                          // ⑤ 이 주소들은 파일을 찾기 전에 Worker가 먼저 처리
-},
-"d1_databases": [{ "binding": "DB", … }], // ⑥ D1을 코드에서 c.env.DB 라는 이름으로 쓰게 연결
-"r2_buckets": [{ "binding": "IMAGES", … }]     // ⑦ R2 버킷을 c.env.IMAGES 로 연결
-```
+### 5-2. `backend/migrations/0001_init.sql` & `0002_features.sql` — 9개 DB 표와 제약 조건
+- **`ON DELETE CASCADE`**: 회원이 탈퇴하면(`DELETE FROM users`) 그 회원의 작품·응원·세션·팀원·북마크·신고가 연쇄적으로 자동 삭제되고, 작품을 내리면(`DELETE FROM projects`) 그 작품의 사진 키·응원·감상·팀원·북마크·신고가 자동으로 함께 지워져요.
+- **복합 기본키(`PRIMARY KEY (user_id, project_id)`)와 `UNIQUE`**: `likes`(응원), `bookmarks`(북마크), `project_members`(팀원), `reports`(신고) 표에 걸려 있어서, 같은 사람이 두 번 중복으로 누르거나 신고하는 것을 DB 차원에서 원천 차단해요.
+- **무중단 확장(`0002_features.sql`)**: 이미 운영 중인 DB의 기존 데이터를 지우지 않도록 `ALTER TABLE projects ADD COLUMN`과 `CREATE TABLE IF NOT EXISTS`로만 새 기능을 덧붙였어요.
 
-### 4-2. `backend/src/index.js` — 서버의 시작점 (조립하는 곳)
+### 5-3. `backend/src/session.js` & `password.js` — 안전한 인증과 암호화
+- **쿠키에는 번호표(`sid`)만, 신원은 D1 `sessions` 표에**: 브라우저 쿠키에 회원 번호(`uid=3`)를 직접 넣으면 조작할 수 있으므로, `crypto.randomUUID()` 두 개를 이어 붙인 긴 무작위 문자열(`sid`)만 `httpOnly` 쿠키로 주고 실제 `uid`는 서버 DB에서만 확인해요.
+- **PBKDF2 100,000회 + 무작위 소금(Salt) + 상수-시간 비교**:
+  - 사람마다 16바이트 무작위 소금을 섞어 같은 비밀번호라도 해시값이 완전히 달라져요.
+  - 로그인 비교 시 첫 바이트가 틀려도 멈추지 않고 끝까지 XOR(`^`) 연산으로 비교(`diff |= got[i] ^ want[i]`)해서, 응답 시간 차이로 비밀번호를 추측하는 **타이밍 공격**을 막아요.
 
-```js
-import { Hono } from 'hono';                         // ① Hono: 주소별 규칙을 쉽게 만드는 작은 웹 프레임워크
-import CATS from '../../shared/categories.json';     // ② 분야 목록. JSON 파일을 바로 배열로 가져옴
-import { loadSession } from './session.js';          // ③ 로그인 확인 검문소
-import auth from './routes/auth.js';                 // ④ 가입·로그인 담당
-import projects from './routes/projects.js';         // ⑤ 작품 담당
+### 5-4. `backend/src/og.js` — 카카오톡·SNS 공유 미리보기 (Open Graph)
+- 카카오톡·슬랙·트위터 봇은 페이지에 들어와도 자바스크립트(`fetch('/api/projects/...')`)를 실행하지 않고 처음 받은 HTML의 `<meta property="og:title">` 태그만 읽어요.
+- 그래서 `projectPage(c)` 함수가 원본 `frontend/project.html`을 가져온 뒤, 공개 작품(`is_public = 1 AND hidden = 0`)이면 Cloudflare의 스트리밍 파서인 `HTMLRewriter`로 `<title>`과 `<meta>` 태그를 그 작품의 제목·소개·첫 번째 사진 주소로 안전하게 바꿔서 내려보내요.
 
-const app = new Hono();                              // ⑥ 서버(앱) 하나 만들기
+### 5-5. `backend/src/routes/projects.js` — SQL 한 번으로 목록 가져오기 & 쉼표 검색 트릭
+- **`SELECT_FULL`**: 작품 목록을 가져올 때 서브쿼리(`group_concat`, `COUNT(*)`, `EXISTS`)를 사용해 작성자 닉네임·사진 키 목록·응원 수·감상 수·북마크 수·내 응원/북마크 여부를 **단 한 번의 SQL 실행**으로 모두 가져와요(N+1 쿼리 문제 해결).
+- **쉼표 감싸기 트릭(`',' || p.cats || ',' LIKE '%,' || ?3 || ',%'`)**: 만약 `cats`가 `"게임개발,웹사이트"`일 때 그냥 `LIKE '%게임%'`으로 검색하면 `'게임'` 분야가 아닌데도 잘못 걸려 나와요. 양쪽에 쉼표를 붙여 `",게임개발,웹사이트,"` 안에 `",게임,"`이 있는지 검사하면 정확히 일치하는 분야와 태그만 깔끔하게 찾을 수 있어요.
+- **`toggle(c, table, id)`**: 응원(`likes`)과 북마크(`bookmarks`)가 똑같은 구조이므로 하나의 `toggle` 함수로 묶었어요. 먼저 `DELETE`를 시도해 지워진 줄 수(`meta.changes`)가 `0`이면 새로 `INSERT`하고, `1`이면 그대로 두어 쿼리 수를 아끼고 동시 클릭에도 안전하게 작동해요.
 
-app.use('/api/*', loadSession);                      // ⑦ /api로 시작하는 모든 요청은 먼저 "누구인지" 확인
-app.get('/api/health', (c) => c.json({ ok: true })); // ⑧ "살아 있니?" 확인용 주소
-app.route('/api', auth);                             // ⑨ /api/signup 등은 auth.js로
-app.route('/api/projects', projects);                // ⑩ /api/projects… 는 projects.js로
+### 5-6. `backend/src/routes/admin.js` & 신고 3회 자동 숨김
+- 서로 다른 회원 3명(`HIDE_AT = 3`)이 작품을 신고하면 `projects.hidden = 1`이 되어 전시관 목록과 남의 상세 조회에서 즉시 숨겨져요(작품 주인과 관리자만 볼 수 있어요).
+- 관리자(`wrangler.jsonc`의 `ADMIN_EMAILS`에 등록된 이메일로 로그인한 회원)는 상단 메뉴에 **'관리'**(`/admin.html`) 링크가 나타나며, 신고 사유들을 확인해 작품을 **'다시 보이기'**(`hidden: 0`)로 복구하거나 **'신고 지우기'**로 정리할 수 있어요.
 
-app.get('/shared/categories.js', (c) =>              // ⑪ 브라우저용 분야 목록을
-  c.body(`window.CATS = ${JSON.stringify(CATS)};`, 200, { 'Content-Type': 'text/javascript; …' }));
-                                                     //    "window.CATS = [...]" 라는 JS 한 줄로 만들어 보냄
-                                                     //    왜? 서버와 화면이 같은 JSON 파일 하나를 쓰게 하려고
-
-app.get('/uploads/:key', async (c) => {              // ⑫ 사진 주소. :key 자리에 사진 이름이 들어옴
-  const obj = await c.env.IMAGES.get(c.req.param('key'));
-                                                     // ⑬ R2에서 사진 파일(내용 + 저장할 때 적어 둔 종류)을 꺼냄
-  if (!obj) return c.notFound();                     // ⑭ 없으면 404
-  return c.body(obj.body, 200, { 'Content-Type': obj.httpMetadata?.contentType || 'image/jpeg', 'Cache-Control': 'public, max-age=31536000, immutable' });
-                                                     // ⑮ 사진을 보내면서 "1년 동안 저장해 둬도 돼" — 키가 절대 안 바뀌니까
-});
-
-app.onError((err, c) => {                            // ⑯ 어디서든 throw된 오류가 여기로 옴
-  if (err.status) return c.json({ error: err.message }, err.status);   // 우리가 던진 오류(bad) → 문구 그대로
-  console.error(err);                                //    예상 못 한 오류 → 기록만 남기고
-  return c.json({ error: '서버에서 문제가 생겼어요. …' }, 500);          //    사용자에겐 일반 문구 (내부 정보 숨김)
-});
-
-export default app;                                  // ⑰ Cloudflare가 이 app으로 요청을 처리
-```
-
-### 4-3. `backend/src/session.js` — 로그인 기억하기
-
-```js
-export async function loadSession(c, next) {
-  const sid = getCookie(c, COOKIE);                  // ① 브라우저가 보낸 번호표(sid) 읽기
-  c.set('uid', null);                                // ② 일단 "로그인 안 함"으로
-  if (sid) {
-    const row = await c.env.DB.prepare('SELECT uid, expires FROM sessions WHERE sid = ?').bind(sid).first();
-                                                     // ③ 장부(sessions 표)에서 번호표 찾기. .first() = 한 줄만
-    if (row && row.expires > Date.now()) {           // ④ 있고, 기한이 안 지났으면
-      c.set('uid', row.uid);                         // ⑤ "이 요청은 uid번 사용자" — 뒤의 라우트가 c.get('uid')로 씀
-      …                                              // ⑥ 하루 이상 지났으면 기한을 다시 30일로 (쓸수록 연장)
-    }
-  }
-  await next();                                      // ⑦ 검문 끝, 다음으로
-}
-
-export async function startSession(c, uid) {
-  const sid = crypto.randomUUID() + crypto.randomUUID();   // ⑧ 아무도 못 맞히는 긴 무작위 번호
-  await c.env.DB.batch([ …만료 세션 청소…, …새 세션 저장… ]); // ⑨ batch = 여러 SQL을 한 번에 (빠름)
-  setCookie(c, COOKIE, sid, cookieOpts(c));          // ⑩ 브라우저에 번호표 건네기 (httpOnly: JS로 못 훔침)
-}
-```
-
-**왜 이렇게?** 쿠키에 "나는 3번 사용자"라고 적어 두면 누구나 숫자를 바꿔 남인 척할 수 있어요. 그래서 쿠키엔 **맞힐 수 없는 번호**만 주고, "누구인지"는 서버 장부에만 둬요.
-
-### 4-4. `backend/src/password.js` — 비밀번호 섞기
-
-```js
-const ITERATIONS = 100000;                            // ① 섞는 횟수. 많을수록 해커가 하나씩 맞혀 보기 어려움
-export async function hashPassword(password) {
-  const salt = crypto.getRandomValues(new Uint8Array(16));  // ② 사람마다 다른 무작위 "소금" 16바이트
-  const hash = await derive(password, salt, ITERATIONS);    // ③ 비밀번호 + 소금을 10만 번 섞기 (PBKDF2)
-  return `pbkdf2$${ITERATIONS}$${toB64(salt)}$${toB64(hash)}`;   // ④ "방식$횟수$소금$결과" 한 줄로 저장
-}
-export async function checkPassword(password, stored) {
-  const [kind, iter, salt, hash] = String(stored).split('$');   // ⑤ 저장된 줄을 $로 나눠 네 조각
-  const got = …derive(password, 소금, 횟수)…                  // ⑥ 입력한 비밀번호를 같은 소금·횟수로 섞어서
-  …for (…) diff |= got[i] ^ want[i];…                         // ⑦ 끝까지 다 비교 (중간에 멈추면 걸린 시간으로 정답을 추측할 수 있어서)
-}
-```
-
-**왜 소금?** 소금이 없으면 비밀번호가 같은 두 사람의 저장값이 같아져서, 하나가 뚫리면 다른 사람도 뚫려요.
-**왜 bcrypt가 아니라 PBKDF2?** Cloudflare 무료 요금제는 요청 하나당 CPU를 10ms까지만 쓸 수 있어요. bcrypt(JS로 계산)는 100ms쯤 걸리고, PBKDF2는 Cloudflare 기본 기능(`crypto.subtle`)이라 훨씬 빨라요.
-
-### 4-5. `backend/src/routes/auth.js` — 가입·로그인
-
-```js
-auth.post('/signup', async (c) => {                    // ① POST /api/signup 이 오면 실행
-  const body = await readJson(c);                      // ② 보낸 JSON 읽기 (깨졌으면 빈 객체)
-  const email = cleanEmail(body.email);                // ③ 앞뒤 공백 제거 + 소문자
-  …
-  if (!EMAIL.test(email) || email.length > 100) throw bad('이메일 주소를 확인해 주세요');
-                                                       // ④ 정규식으로 "글자@글자.글자" 모양인지
-  if (!/^(?=.*[A-Za-z])(?=.*\d).{8,}$/.test(password)) throw bad('…8자 이상, 영문+숫자…');
-                                                       // ⑤ (?=.*[A-Za-z]) 영문 어딘가, (?=.*\d) 숫자 어딘가, .{8,} 8자 이상
-  checkNickname(nickname);                             // ⑥ 2~20자
-  if (await …SELECT 1 FROM users WHERE email = ?…) throw bad('이미 가입한 이메일이에요', 409);
-                                                       // ⑦ 409 = "이미 있어서 충돌"
-  const { meta } = await c.env.DB.prepare('INSERT INTO users (email, password, nickname) VALUES (?, ?, ?)')
-    .bind(email, await hashPassword(password), nickname).run();
-                                                       // ⑧ 비밀번호는 섞어서 저장. meta.last_row_id = 새 번호
-  await startSession(c, meta.last_row_id);             // ⑨ 가입과 동시에 로그인
-  return c.json(await me(c, meta.last_row_id));        // ⑩ 내 정보 돌려주기 (비밀번호 열은 빼고)
-});
-
-auth.post('/login', async (c) => {
-  …
-  if (!user || !(await checkPassword(…))) throw bad('이메일이나 비밀번호가 맞지 않아요', 401);
-                                                       // ⑪ 이메일이 없든 비밀번호가 틀리든 **같은 문구**
-                                                       //    → 어떤 이메일이 가입됐는지 남이 알아낼 수 없게
-  await startSession(c, user.id);
-  …
-});
-```
-
-### 4-6. `backend/src/routes/projects.js` — 목록과 응원 (핵심만)
-
-```js
-const SELECT_FULL = `
-  SELECT p.*, u.nickname AS author,                                  -- ① 작품 + 올린 사람 닉네임
-    (SELECT group_concat(file, ',') FROM (…images…)) AS image_keys,  -- ② 사진 키들을 "a,b,c" 한 줄로
-    (SELECT COUNT(*) FROM likes WHERE project_id = p.id) AS likes,   -- ③ 응원 수
-    EXISTS(SELECT 1 FROM likes WHERE … AND user_id = ?1) AS liked    -- ④ 내가 눌렀는지
-  FROM projects p JOIN users u ON u.id = p.user_id`;
-// 왜 한 번에? 작품 20개를 가져온 뒤 작품마다 SQL을 또 부르면 20×4번 = 80번 DB에 다녀와요.
-// D1은 네트워크 너머에 있어서 한 번 다녀올 때마다 시간이 걸려요 → SQL 한 번에 다 붙임
-
-projects.get('/', async (c) => {
-  const q = c.req.query('q') || '', cat = …;               // ⑤ 주소 뒤 ?q=급식&cat=게임 읽기
-  … WHERE (p.is_public = 1 OR p.user_id = ?1)              -- ⑥ 공개 작품 + 내 비공개 작품만
-      AND (?3 = '' OR ',' || p.cats || ',' LIKE '%,' || ?3 || ',%')
-                                                           -- ⑦ ",학교생활,게임," 안에 ",게임,"이 있는지 → '게임기' 같은 부분 일치 방지
-    ORDER BY ${hot ? 'likes DESC,' : ''} p.id DESC         -- ⑧ 인기순이면 응원 많은 순. ${}엔 정해진 글자만 들어가서 안전
-  .bind(uid, `%${q}%`, cat, tag, user)                     // ⑨ ?1~?5 자리에 순서대로 끼우기
-  return c.json(results.map((p) => shape(p, uid)));        // ⑩ 쉼표 글자를 배열로, 사진 키를 주소로 바꿔 보내기
-});
-
-projects.post('/:id/like', needLogin, async (c) => {       // ⑪ needLogin 검문소를 먼저 지남
-  const { meta } = await …DELETE FROM likes WHERE user_id = ? AND project_id = ?…;
-  const removed = meta.changes > 0;                        // ⑫ 지운 줄이 있으면 = 원래 눌려 있었음
-  if (!removed) await …INSERT INTO likes…;                 // ⑬ 없었으면 새로 넣기 → 누를 때마다 켜짐/꺼짐(토글)
-  …
-});
-```
-
-### 4-7. `frontend/edit.html`의 `shrink()` — 사진 줄이기
-
-```js
-async function shrink(file, max = 1600) {
-  const img = await createImageBitmap(file);                       // ① 고른 사진 파일을 그림으로 읽기
-  const scale = Math.min(1, max / Math.max(img.width, img.height)); // ② 긴 쪽이 1600px이 되는 비율 (작으면 그대로 1)
-  const canvas = document.createElement('canvas');                 // ③ 보이지 않는 도화지
-  canvas.width = Math.round(img.width * scale); …                  // ④ 줄인 크기로
-  ctx.fillStyle = '#fff'; ctx.fillRect(…);                         // ⑤ 투명 PNG도 흰 배경으로
-  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);           // ⑥ 그림 그리기
-  return new Promise((ok, fail) => canvas.toBlob((b) => …, 'image/jpeg', 0.82));
-                                                                   // ⑦ JPEG(품질 82%) 파일로 만들어 돌려줌
-}
-```
-**왜?** 휴대폰 사진은 5~10MB예요. 사진 창고(R2) 무료 한도가 10GB라도 그대로 올리면 금방 차고, 올리는 데도 오래 걸려요. 줄이면 장당 100~300KB.
-
-### 4-8. `frontend/js/app.js` — 화면 공통 함수 (핵심만)
-
-```js
-async function api(url, method = 'GET', body) {          // ① 서버 주문을 한 함수로
-  …
-  const res = await fetch(url, opts);                     // ② 주문 보내고 응답 기다리기
-  const data = await res.json().catch(() => ({}));        // ③ 응답 JSON 꺼내기
-  if (!res.ok) { const e = new Error(data.error || '…'); e.status = res.status; throw e; }
-                                                          // ④ 실패면 서버 문구로 에러를 던짐 → 부른 쪽이 화면에 보여 줌
-  return data;
-}
-
-const esc = (s = '') => String(s).replace(/[&<>"']/g, …);  // ⑤ 사용자가 쓴 글의 < > 같은 기호를 바꿈
-// 왜? 누군가 제목에 <script>를 쓰면 다른 사람 화면에서 실행될 수 있어요(XSS 공격). 사용자 글은 항상 esc()
-
-function card(p) { return `<article class="card">…${esc(p.title)}…</article>`; }
-// ⑥ 작품 하나를 카드 HTML로. 홈·전시관·프로필·홍보 키트가 모두 이 함수 하나를 씀
-
-document.addEventListener('click', async (e) => {
-  const btn = e.target.closest('[data-cheer]');            // ⑦ 누른 곳에서 위로 올라가며 ▲ 버튼 찾기
-  if (!btn) return;
-  …
-});
-// ⑧ 버튼마다 연결하지 않고 문서 전체에 하나만 (이벤트 위임) → 나중에 그려진 카드도 자동으로 동작
-```
-
-### 4-9. 나중에 더한 기능 (`0002_features.sql`)
-
-| 기능 | 어디에 | 한 줄 설명 |
-|---|---|---|
-| 팀원 | `project_members` 표, `GET /api/users?q=`, `edit.html` | 닉네임으로 찾아 최대 5명. 폼에 `members=3,7`로 보내면 서버가 통째로 바꿔요 |
-| 임시 저장 | `edit.html`의 `saveDraft()` | 글자 칸만 `localStorage`(`part-draft:new` 또는 `part-draft:번호`)에. 저장 성공하면 지워요 |
-| 사이트 미리보기 | `project.html`의 `#pvBtn` | 누를 때만 `sandbox` iframe을 만들어요 |
-| 북마크 | `bookmarks` 표, `POST /api/projects/:id/bookmark` | 응원과 같은 `toggle()`을 써요. `?bookmarked=1`로 내 북마크만 |
-| 공유 미리보기 | `backend/src/og.js` | `/project.html`은 Worker가 먼저 받아 `HTMLRewriter`로 og 태그를 작품 값으로 바꿔요 |
-| 전시 통계 | `projects.views` | 주인이 아닌 사람이 상세를 열면 +1 |
-| 신고·숨김 | `reports` 표, `projects.hidden`, `routes/admin.js` | 3명이 신고하면 숨김. 관리자(`ADMIN_EMAILS`)가 되살리거나 신고를 지워요 |
+### 5-7. `frontend/edit.html` — 실시간 미리보기 · 자동 임시 저장 · 클라이언트 사진 압축
+- **자동 임시 저장(`saveDraft`)**: 글자를 입력할 때마다 0.5초 디바운스로 `localStorage`(`part-draft:new` 또는 `part-draft:작품번호`)에 저장해요. 실수로 창을 닫았다가 다시 열어도 `"임시 저장한 글을 불러왔어요"` 배너와 함께 작성하던 내용이 그대로 복구되고, 최종 제출에 성공하면 자동으로 지워져요.
+- **클라이언트 사진 압축(`shrink`)**: 휴대폰으로 찍은 5~10MB짜리 고화질 사진을 그대로 서버에 올리면 느리고 용량 제한(1.5MB)에 걸려요. 브라우저의 `<canvas>`를 이용해 업로드 직전에 긴 변 최대 1600px, 품질 82% JPEG로 줄여서 올리기 때문에 빠르고 R2 저장 공간도 아낄 수 있어요.
 
 ---
 
-## 5. 왜 이렇게 코드를 작성했을까요? (작성 이유와 꿀팁)
-
-- **Q1. 왜 React 같은 프레임워크 대신 바닐라 JS?**
-  설치·빌드 없이 HTML 파일이 바로 보이고, 수행평가 요구(HTML·CSS·JS)에 맞아요. 공통 부분은 `app.js`에 모았어요.
-- **Q2. 왜 Cloudflare?**
-  카드 없이 무료이고, 서버가 쉬어도 데이터(D1·R2)가 남아요. Railway는 무료 체험이 끝났고, Render 무료는 재배포 때 데이터가 사라져요.
-- **Q3. 화면에서 검사했는데 서버에서 또 검사하는 이유는?**
-  화면 JS는 개발자 도구로 누구나 고칠 수 있어요. **진짜 문지기는 서버**예요. 화면 검사는 "빨리 알려 주기"용.
-- **Q4. `esc()`를 빼먹으면?**
-  누군가 작품 제목에 `<img src=x onerror=alert(1)>`을 쓰면 보는 사람 브라우저에서 코드가 실행돼요.
-- **Q5. SQL에서 `?`를 안 쓰고 `'...' + email + '...'`로 이어 붙이면?**
-  이메일 칸에 `' OR 1=1 --`를 넣어 남의 계정으로 로그인하는 공격(SQL 인젝션)이 가능해져요.
-- **Q6. 로그인 실패 문구를 왜 하나로 합쳤나요?**
-  "없는 이메일"과 "비밀번호 틀림"을 구분해 주면, 남이 어떤 이메일이 가입됐는지 알아낼 수 있어요.
-- **Q7. 왜 DB 표를 `migrations/` 파일로 관리하나요?**
-  표를 바꾼 기록이 순서대로 남고, 내 컴퓨터 DB와 실제 DB에 **같은 순서로** 적용돼요. 손으로 SQL을 치면 둘이 달라지기 쉬워요.
-
----
-
-## 6. 직접 실행해 보기
+## 6. 직접 실행하고 테스트해 보기
 
 ```bash
-npm install        # 필요한 라이브러리 설치 (처음 한 번)
-npm run dev        # 내 컴퓨터에서 켜기 → http://localhost:8787
-npm test           # 자동 확인 59가지
+# 1. 패키지 설치 (처음 한 번)
+npm install
+
+# 2. 문법 및 설정 이상 유무 빠르게 확인
+npm run check
+
+# 3. 내 컴퓨터에서 개발 서버 켜기 (로컬 D1·R2 자동 생성 → http://localhost:8787)
+npm run dev
+
+# 4. 59가지 전체 시나리오 자동 스모크 테스트 실행
+npm test
 ```
 
-실행 결과 예시 (`npm test`):
-
-```
-✓ 화면 파일이 열린다
-✓ 가입 + 이메일 소문자 저장
-✓ 작품 등록 + 사진 저장
-✓ 남의 작품 삭제 거절
-…
-모두 통과 (59개)
-```
-
-### 연습 문제
-1. `shared/categories.json`에 `"예술"`을 추가하고 `npm run dev`를 다시 켜 보세요. 홈의 분야 버튼과 등록 화면에 모두 생기나요?
-2. `frontend/index.html`의 `HOME_LIMIT`를 3으로 바꾸면 홈에 카드가 몇 개 보이나요?
-3. 브라우저 개발자 도구(F12) → Network 탭을 열고 ▲를 눌러 보세요. 어떤 주소로 어떤 JSON이 오가나요?
-4. 개발자 도구 → Application → Cookies에서 `sid`를 찾아 보세요. 왜 숫자(사용자 번호)가 아니라 긴 무작위 글자일까요?
+`npm test` 실행 시 59개 항목이 모두 초록색 체크(`✓`)로 통과하며 `모두 통과 (59개)`가 출력되면 모든 기능이 완벽하게 동작하는 상태예요!

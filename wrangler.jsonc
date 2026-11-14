@@ -1,28 +1,57 @@
-// [파일 개요] Cloudflare Workers 설정이에요. `npm run dev`(내 컴퓨터)와 `npm run deploy`(인터넷)가 둘 다 읽어요. JSONC라 주석을 쓸 수 있어요.
+// ============================================================================
+// [파일 개요] Cloudflare Workers 설정 파일이에요.
+// - `npm run dev`(내 컴퓨터에서 테스트)와 `npm run deploy`(인터넷에 배포)가 둘 다 이 파일을 읽어요.
+// - 확장자가 .jsonc(JSON with Comments)라서 JSON 안에서도 // 주석을 자유롭게 쓸 수 있어요.
+// [비유] 건물을 지을 때 "입구는 어디고, 창고(DB·사진함)는 어디에 연결할지" 적어 둔 설계도예요.
+// ============================================================================
 {
+  // [뜻/역할] 에디터(VS Code 등)가 오타나 잘못된 설정 이름을 바로 알려 주도록 스키마(규칙표) 경로를 연결해요.
+  // [문법] "$schema"는 JSON 표준에서 문서의 규칙 파일을 가리키는 약속된 키예요.
+  // [작성 이유] 설정 키 이름을 잘못 적었을 때 배포 전에 에디터에서 빨간 줄로 바로 잡기 위해서예요.
   "$schema": "node_modules/wrangler/config-schema.json",
+
+  // [뜻/역할] Cloudflare 대시보드에 표시될 이 Worker(서버)의 이름이에요.
+  // [문법] 문자열(string) 값으로 영문 소문자와 하이픈(-)을 주로 써요.
+  // [작성 이유] 배포했을 때 `p-art.<계정이름>.workers.dev`처럼 주소와 프로젝트 이름으로 쓰여요.
   "name": "p-art",
+
+  // [뜻/역할] 서버 요청이 들어왔을 때 가장 먼저 실행할 자바스크립트 시작 파일이에요.
+  // [문법] 프로젝트 루트 폴더 기준 상대 경로를 적어요.
+  // [작성 이유] Cloudflare가 어떤 파일을 서버 본체로 묶어서(번들링) 올릴지 알려 주기 위해서예요.
   "main": "backend/src/index.js",
-  // 이 날짜 기준 동작으로 고정해서, Cloudflare가 동작을 바꿔도 코드가 안 깨져요.
+
+  // [뜻/역할] Cloudflare 런타임 동작 기준 날짜를 고정해요.
+  // [문법] "YYYY-MM-DD" 형식의 날짜 문자열이에요.
+  // [작성 이유] 나중에 Cloudflare가 기본 기능을 바꾸더라도 이 날짜 기준 동작을 유지해서 우리 코드가 갑자기 깨지지 않게 해 줘요.
   "compatibility_date": "2025-09-01",
 
-  // 화면 파일은 frontend/에서 바로 보내고, run_worker_first 주소만 Worker(backend)가 처리해요.
-  // /project·/project.html은 공유 미리보기(og 태그)를 작품마다 바꾸려고 Worker가 먼저 받아요(backend/src/og.js).
+  // [뜻/역할] HTML·CSS·JS·이미지 같은 정적 화면 파일 설정이에요.
+  // [문법] directory(폴더 경로), binding(Worker에서 부를 이름), run_worker_first(Worker가 먼저 가로챌 주소 목록)를 객체로 묶어요.
+  // [작성 이유] 일반 화면 파일은 Cloudflare가 `frontend/`에서 바로 빠르게 보내고,
+  //   API·업로드 사진·공유 카테고리·작품 상세(/project, /project.html — 카톡 공유용 OG 태그 주입)만 Worker(`backend/src/index.js`)가 먼저 처리하게 나누기 위해서예요.
   "assets": {
     "directory": "./frontend",
     "binding": "ASSETS",
     "run_worker_first": ["/api/*", "/uploads/*", "/shared/*", "/project", "/project.html"]
   },
 
-  // 관리자 이메일(쉼표로 구분). 비워 두면 관리자가 없어요. 배포 값은 docs/DEPLOY.md를 보세요.
+  // [뜻/역할] 코드에서 `c.env.ADMIN_EMAILS`로 꺼내 쓸 환경 변수예요(쉼표로 여러 명 구분).
+  // [문법] "vars" 객체 안에 키-값 쌍으로 적어요.
+  // [작성 이유] 관리자 이메일을 코드에 박아 두지 않고 설정으로 분리하기 위해서예요. 비워 두면 관리자가 없고, 배포 환경에서는 대시보드나 배포 설정으로 넣어 써요.
   "vars": { "ADMIN_EMAILS": "" },
 
-  // DB(D1, SQLite) — 코드에서 c.env.DB로 써요. id는 비밀값이 아니에요.
+  // [뜻/역할] Cloudflare D1(SQLite 기반 서버리스 데이터베이스) 연결 설정이에요.
+  // [문법] 배열 안에 객체를 넣고, 코드에서 쓸 이름(`binding: "DB"`), DB 이름, 고유 ID, 마이그레이션 폴더 경로를 적어요.
+  // [작성 이유] Worker 코드 안에서 `c.env.DB.prepare(...)` 한 줄로 SQL 데이터베이스를 바로 읽고 쓸 수 있게 해 줘요. (`database_id`는 계정 안에서 DB를 구분하는 번호라 비밀키가 아니에요.)
   "d1_databases": [{ "binding": "DB", "database_name": "p-art", "database_id": "df14cf96-6d63-4752-b6e4-948a5d299880", "migrations_dir": "backend/migrations" }],
 
-  // 사진 저장소(R2) — 코드에서 c.env.IMAGES로 써요. KV보다 파일 저장에 알맞아요.
+  // [뜻/역할] Cloudflare R2(파일·사진 전용 객체 저장소) 연결 설정이에요.
+  // [문법] 배열 안에 `binding`(코드에서 부를 이름: `c.env.IMAGES`)과 `bucket_name`(실제 버킷 이름)을 적어요.
+  // [작성 이유] 작품 스크린샷 사진을 DB나 KV가 아니라 파일 저장에 최적화된 R2 버킷에 저장하고 꺼내 쓰기 위해서예요.
   "r2_buckets": [{ "binding": "IMAGES", "bucket_name": "p-art-uploads" }],
 
-  // 대시보드에서 로그(console.error)와 요청 기록을 볼 수 있게 켜요.
+  // [뜻/역할] Cloudflare 대시보드에서 서버 로그(`console.error`)와 요청 통계를 볼 수 있게 켜는 옵션이에요.
+  // [문법] `"observability": { "enabled": true }` 형태로 설정해요.
+  // [작성 이유] 배포 후 문제가 생겼을 때 대시보드에서 실시간 에러 로그를 확인하기 위해서예요.
   "observability": { "enabled": true }
 }
