@@ -1,10 +1,15 @@
 <!doctype html>
-<!-- [파일 개요] 로그인(/login.html): app.js의 stepForm()으로 이메일 → 비밀번호를 한 칸씩 받아요. -->
+<!-- ==========================================================================
+  [파일 개요] 로그인 페이지(`/login.html`)예요.
+  - `app.js`의 `stepForm()`을 사용해 ① 이메일 → ② 비밀번호 순서로 한 번에 한 칸씩 입력받아요.
+  - 로그인에 성공하면 원래 가려던 페이지(`?next=`)나 홈(`/`)으로 안내해요.
+  [비유] 미술관 작가 전용 출입구에서 회원증을 확인하는 곳이에요.
+=========================================================================== -->
 <html lang="ko">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>로그인 · PART</title>
-<!-- 공유 미리보기 기본값. 작품 페이지는 서버(backend/src/og.js)가 작품마다 바꿔 보내요. -->
+<!-- [뜻/역할] 공유 미리보기 기본 메타 태그예요. -->
 <meta name="description" content="수행평가로 만든 웹페이지·게임·도구를 링크 대신 작품처럼 걸어 두는 학생 전시관이에요.">
 <meta property="og:type" content="website"><meta property="og:site_name" content="PART">
 <meta property="og:title" content="PART · 학생 작품 전시관">
@@ -32,19 +37,22 @@
 </div>
 <script src="/js/app.js"></script>
 <script>
-// 로그인 뒤 돌아갈 주소(?next=)예요. '/'로 시작하고 '//'는 아닐 때만 써서 외부 사이트로 보내는 공격(오픈 리다이렉트)을 막아요.
+// [뜻/역할] 로그인 완료 후 돌아갈 주소(`?next=`)를 안전하게 확인해요.
+// [문법] 반드시 `'/'`로 시작하면서 `'//'`로는 시작하지 않는 내부 경로일 때만 허용하고, 아니면 `'/'`로 고정해요.
+// [작성 이유] 만약 누군가 `/login.html?next=//evil.com` 같은 조작된 링크를 보냈을 때, 로그인 직후 외부 피싱 사이트로 납치되는 '오픈 리다이렉트(Open Redirect)' 공격을 막기 위해서예요.
 const next = (param('next') || '/').startsWith('/') && !(param('next') || '').startsWith('//') ? (param('next') || '/') : '/';
 
+// [뜻/역할] 1단계(이메일) → 2단계(비밀번호) 입력 폼을 실행하고, 모두 입력되면 `POST /api/login`을 호출해요.
+// [작성 이유] 로그인이 끝나면 완료 링크(`.auth-done a`)에 자동으로 포커스를 주어 마우스를 쓰지 않고 엔터키만 한 번 더 쳐도 바로 이동할 수 있게 배려했어요.
 const flow = stepForm([
   { ph: '이메일', type: 'email', auto: 'email', mode: 'email', check: (v) => { if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim())) throw new Error('이메일 주소를 확인해 주세요'); } },
   { ph: '비밀번호', type: 'password', auto: 'current-password', check: (v) => { if (!v) throw new Error('비밀번호를 입력해 주세요'); } },
 ], async ([email, password]) => {
   try {
     const u = await api('/api/login', 'POST', { email: email.trim(), password });
-    // 링크에 포커스를 줘서 엔터만 쳐도 이동해요.
     $('#step').innerHTML = `<div class="auth-done"><p class="t">어서 와요, ${esc(u.nickname)}</p><a href="${esc(next)}">${next === '/' ? '전시관으로' : '보던 곳으로'} <span aria-hidden="true">→</span></a></div>`;
     $('.auth-done a').focus();
-  } catch (err) { flow.goTo(1, err.message); } // 비밀번호 단계로 돌아가요
+  } catch (err) { flow.goTo(1, err.message); }
 });
 </script>
 </body>

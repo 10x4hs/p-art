@@ -1,10 +1,16 @@
 <!doctype html>
-<!-- [파일 개요] 작품 걸기(/edit.html)와 고치기(?id=번호): 왼쪽 폼에 쓰는 대로 오른쪽 미리보기 카드가 바뀌어요. 쓰던 글은 브라우저에 임시 저장돼요. -->
+<!-- ==========================================================================
+  [파일 개요] 새 작품을 걸거나(`/edit.html`) 기존 내 작품을 고치는(`/edit.html?id=번호`) 페이지예요.
+  - 왼쪽 입력 폼에 글자를 치거나 사진을 고르는 즉시 오른쪽 미리보기 카드(`.prev`)가 실시간으로 바뀌어요.
+  - 작성 중인 글은 브라우저(`localStorage`, 키: `part-draft:...`)에 자동으로 임시 저장되어 실수로 창을 닫아도 날아가지 않아요.
+  - 사진을 올릴 때는 브라우저 `<canvas>`(`shrink()`)에서 긴 변 1600px JPEG로 먼저 가볍게 줄여서 전송해요.
+  [비유] 작품을 액자에 끼워 보고 이름표를 다듬어 전시실 벽에 걸기 직전의 작가 작업실이에요.
+=========================================================================== -->
 <html lang="ko">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>작품 걸기 · PART</title>
-<!-- 공유 미리보기 기본값. 작품 페이지는 서버(backend/src/og.js)가 작품마다 바꿔 보내요. -->
+<!-- [뜻/역할] 공유 미리보기 기본 메타 태그예요. -->
 <meta name="description" content="수행평가로 만든 웹페이지·게임·도구를 링크 대신 작품처럼 걸어 두는 학생 전시관이에요.">
 <meta property="og:type" content="website"><meta property="og:site_name" content="PART">
 <meta property="og:title" content="PART · 학생 작품 전시관">
@@ -30,7 +36,7 @@
     <h1 class="h2" style="font-size:clamp(28px,3.2cqi,42px)" id="head">내 작품을 <b>걸어 볼까요?</b></h1>
     <p style="color:var(--mute);font-weight:300;margin:16px 0 36px">1분이면 끝나요. 오른쪽 카드가 입력하는 대로 바뀌어요.</p>
 
-    <!-- novalidate: 브라우저 기본 말풍선 대신 아래 bad()가 한국어로 안내해요. -->
+    <!-- [뜻/역할] 임시 저장된 글을 불러왔을 때 알려 주는 안내 줄(`#draft`)과 작품 입력 폼(`#form`)이에요. `novalidate`를 붙여 브라우저 기본 영어 말풍선 대신 우리의 친절한 한국어 안내(`bad()`)가 동작하게 해요. -->
     <div class="draft glass hide" id="draft" role="status" style="margin-bottom:22px"><span>임시 저장한 글을 불러왔어요.</span><button type="button" id="draftClear">지우기</button></div>
     <form class="form" id="form" novalidate>
       <label class="drop"><input type="file" name="images" accept="image/jpeg,image/png,image/webp" multiple><b>대표 사진 올리기</b><span id="photoHint">jpg·png·webp, 5장까지. 첫 장이 대표 사진이에요</span></label>
@@ -56,6 +62,7 @@
     </form>
   </div>
 
+  <!-- [뜻/역할] 왼쪽 폼에 입력하는 내용을 실시간으로 반영해 보여 주는 오른쪽 미리보기 카드(`.prev`)예요. -->
   <div class="prev">
     <p class="mono">Preview · 미리보기</p>
     <article class="card">
@@ -73,12 +80,15 @@
 <script src="/shared/categories.js"></script>
 <script src="/js/app.js"></script>
 <script>
-const id = param('id'), form = $('#form'); // id가 있으면 고치기, 없으면 새로 걸기예요
-const picked = new Set(); // 고른 분야들
-let oldImg = null, blobUrl = null; // 원래 대표 사진, 새로 고른 사진의 임시 주소
-const mates = new Map(); // 함께 만든 친구: 회원 번호 → 닉네임
+// [뜻/역할] 주소에 `id`가 있으면 '기존 작품 고치기 모드', 없으면 '새 작품 걸기 모드'로 동작해요.
+// - `picked`: 선택한 분야(`Set`), `oldImg`/`blobUrl`: 대표 사진 미리보기 주소, `mates`: 선택한 팀원(`회원번호 → 닉네임` `Map`).
+const id = param('id'), form = $('#form');
+const picked = new Set();
+let oldImg = null, blobUrl = null;
+const mates = new Map();
 let me = null;
 
+// [뜻/역할] 분야 칩 버튼들을 그리고 클릭할 때마다 선택(`picked`) 상태를 토글해요.
 function drawCats() {
   $('#cats').innerHTML = '<legend>분야</legend>' + CATS.map((c) =>
     `<button type="button" class="chip" data-cat="${c}" aria-pressed="${picked.has(c)}">${c}</button>`).join('');
@@ -89,6 +99,7 @@ $('#cats').onclick = (e) => {
   drawCats(); preview(); saveDraft();
 };
 
+// [뜻/역할] 왼쪽 폼에 입력된 제목·소개·만든 사람·첫 번째 분야를 오른쪽 미리보기 카드에 즉시 반영해요.
 function preview() {
   $('#pvTitle').textContent = form.title.value.trim() || '작품 이름';
   $('#pvSum').textContent = form.summary.value.trim() || '한 줄 소개가 여기에 보여요';
@@ -97,11 +108,13 @@ function preview() {
 }
 form.addEventListener('input', preview);
 
-// ── 함께 만든 친구: 닉네임으로 찾아서 칩으로 더하고, 칩을 누르면 빼요 ──
+// ── 1. 함께 만든 친구(팀원): 닉네임으로 검색해 칩으로 추가·삭제 ───────────
+// [뜻/역할] 현재 선택된 팀원 목록(`mates`)을 `닉네임 ✕` 모양의 칩 버튼으로 그려요.
 function drawMates() {
   $('#mates').innerHTML = [...mates].map(([uid, nick]) =>
     `<button type="button" class="chip" data-rm="${uid}" aria-pressed="true" aria-label="${esc(nick)} 빼기">${esc(nick)} ✕</button>`).join('');
 }
+// [뜻/역할] 팀원 검색칸(`#f-mem`)에 글자를 치면 0.25초 디바운스 후 `/api/users?q=`를 호출해 나 자신과 이미 추가된 친구를 뺀 검색 결과를 보여 줘요.
 let mt;
 $('#f-mem').oninput = (e) => {
   clearTimeout(mt);
@@ -113,7 +126,8 @@ $('#f-mem').oninput = (e) => {
       : '<span style="color:var(--dim);font-size:13.5px">찾는 친구가 없어요</span>';
   }, 250);
 };
-$('#f-mem').onkeydown = (e) => { if (e.key === 'Enter') e.preventDefault(); }; // 엔터로 폼이 제출되지 않게
+// [뜻/역할] 팀원 검색칸에서 엔터를 쳤을 때 전체 작품 폼이 실수로 제출되지 않게 막아요.
+$('#f-mem').onkeydown = (e) => { if (e.key === 'Enter') e.preventDefault(); };
 $('#found').onclick = (e) => {
   const b = e.target.closest('[data-add]'); if (!b) return;
   if (mates.size >= 5) return toast('함께 만든 친구는 5명까지예요');
@@ -125,7 +139,9 @@ $('#mates').onclick = (e) => {
   mates.delete(Number(b.dataset.rm)); drawMates();
 };
 
-// ── 임시 저장: 글자 칸만 브라우저(localStorage)에 0.5초마다 모아 저장해요. 사진은 저장하지 않아요 ──
+// ── 2. 자동 임시 저장 (localStorage `part-draft:new` 또는 `part-draft:번호`) ──
+// [뜻/역할] 글자 입력칸 8개와 선택한 분야(`cats`)를 입력이 멈춘 뒤 0.5초마다 브라우저 `localStorage`에 저장해요.
+// [작성 이유] 열심히 쓴 작품 소개글이 실수로 뒤로 가기나 새로고침을 눌렀을 때 날아가지 않게 보호하기 위해서예요.
 const DRAFT = 'part-draft:' + (id || 'new');
 const TEXTS = ['title', 'summary', 'maker', 'url', 'target', 'detail', 'tags', 'github'];
 let dt;
@@ -134,7 +150,7 @@ function saveDraft() {
   dt = setTimeout(() => {
     const d = Object.fromEntries(TEXTS.map((k) => [k, form[k].value]));
     d.cats = [...picked];
-    try { localStorage.setItem(DRAFT, JSON.stringify(d)); } catch {} // 시크릿 모드 등에서 막혀도 괜찮아요
+    try { localStorage.setItem(DRAFT, JSON.stringify(d)); } catch {}
   }, 500);
 }
 const dropDraft = () => { clearTimeout(dt); try { localStorage.removeItem(DRAFT); } catch {} };
@@ -147,9 +163,11 @@ function loadDraft() {
   $('#draft').classList.remove('hide');
 }
 form.addEventListener('input', (e) => { if (e.target.name) saveDraft(); });
-$('#draftClear').onclick = () => { dropDraft(); location.reload(); }; // 지우고 원래 내용으로 다시 열어요
+$('#draftClear').onclick = () => { dropDraft(); location.reload(); };
 
-// 고른 첫 사진을 업로드 전에 미리보기로 보여 줘요. 예전 임시 주소는 revoke로 버려서 메모리를 아껴요.
+// ── 3. 사진 미리보기 및 클라이언트 리사이즈·압축 (`shrink`) ──────────────────
+// [뜻/역할] 파일 선택창에서 사진을 고르면 첫 번째 사진을 `URL.createObjectURL`로 만들어 오른쪽 미리보기 카드(`#pvImg`)에 즉시 보여 줘요.
+// [작성 이유] 서버에 실제로 올리기 전에도 내 사진이 카드에서 어떻게 보일지 바로 확인할 수 있고, 이전 임시 URL은 `revokeObjectURL`로 해제해 브라우저 메모리를 아껴요.
 form.images.onchange = () => {
   const files = [...form.images.files];
   if (blobUrl) URL.revokeObjectURL(blobUrl);
@@ -160,6 +178,7 @@ form.images.onchange = () => {
     : 'jpg·png·webp, 5장까지. 첫 장이 대표 사진이에요';
 };
 
+// [뜻/역할] '예시로 채우기' 버튼(`#fill`)을 누르면 처음 써 보는 학생도 감을 잡을 수 있게 샘플 텍스트를 자동으로 채워 줘요.
 $('#fill').onclick = () => {
   form.title.value = 'PART';
   form.summary.value = '프로젝트를 작품처럼 거는 학생 전시관';
@@ -172,27 +191,33 @@ $('#fill').onclick = () => {
   drawCats(); preview(); saveDraft();
 };
 
-// 틀린 칸에 빨간 테두리(.bad)와 포커스를 주고 안내 문구를 보여 줘요.
+// [뜻/역할] 필수 입력칸이 비었거나 형식이 틀렸을 때 해당 칸에 빨간 테두리(`.bad`)와 포커스를 주고 안내 문구(`#err`)를 띄워요.
 function bad(input, msg) {
   $$('.bad', form).forEach((el) => el.classList.remove('bad'));
   if (input) { input.classList.add('bad'); input.focus(); }
   $('#err').textContent = msg ? '⚠ ' + msg : '';
 }
-// 사진을 올리기 전에 긴 쪽 1600px 이하 JPEG(품질 82%)로 줄여요. 서버는 장당 1.5MB까지만 받아요.
+
+// [뜻/역할] 고해상도 사진 파일을 받아 가로·세로 중 긴 쪽이 최대 `1600px` 이하가 되도록 줄이고, 품질 `82%`의 JPEG(`Blob`)로 압축해 돌려주는 함수예요.
+// [문법]
+// - `createImageBitmap(file)`로 이미지를 디코딩하고, `Math.min(1, max / Math.max(width, height))`로 축소 비율(`scale`)을 계산해요(원래 작은 사진은 억지로 키우지 않아요).
+// - 보이지 않는 `<canvas>`에 흰색 배경(`#fff`)을 칠한 뒤(투명 PNG가 검은 배경이 되는 것 방지) 줄인 크기로 그림을 그리고 `canvas.toBlob`으로 JPEG를 뽑아내요.
+// [작성 이유] 스마트폰 사진(5~10MB)을 그대로 올리면 업로드가 느리고 서버 제한(1.5MB)에 걸리므로, 화질은 선명하게 유지하면서 용량만 100~300KB 수준으로 똑똑하게 줄이기 위해서예요.
 async function shrink(file, max = 1600) {
   const img = await createImageBitmap(file);
-  const scale = Math.min(1, max / Math.max(img.width, img.height)); // 작은 사진은 키우지 않아요
+  const scale = Math.min(1, max / Math.max(img.width, img.height));
   const canvas = document.createElement('canvas');
   canvas.width = Math.round(img.width * scale);
   canvas.height = Math.round(img.height * scale);
   const ctx = canvas.getContext('2d');
-  ctx.fillStyle = '#fff'; // 투명한 PNG는 흰 배경으로
+  ctx.fillStyle = '#fff';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
   return new Promise((ok, fail) => canvas.toBlob((b) => (b ? ok(b) : fail(new Error('shrink'))), 'image/jpeg', 0.82));
 }
-const isHttp = (u) => /^https?:\/\/\S+$/.test(u); // 서버 util.js의 isHttp와 같은 규칙
+const isHttp = (u) => /^https?:\/\/\S+$/.test(u);
 
+// [뜻/역할] 폼 제출 시 필수값을 검사하고 사진을 `shrink()`로 줄여 `FormData`에 담은 뒤 서버에 등록(`POST`) 또는 수정(`PUT`) 요청을 보내요.
 form.onsubmit = async (e) => {
   e.preventDefault();
   if (!form.title.value.trim()) return bad(form.title, '작품 이름을 적어 주세요.');
@@ -203,10 +228,9 @@ form.onsubmit = async (e) => {
   if (form.images.files.length > 5) return bad(null, '사진은 5장까지예요.');
   bad(null, '');
 
-  // 원본 사진은 빼고, 줄인 사진으로 다시 넣어요.
   const data = new FormData(form);
   data.delete('images');
-  $('#submit').disabled = true; // 두 번 누르기 방지
+  $('#submit').disabled = true;
   $('#err').textContent = form.images.files.length ? '사진을 줄이는 중…' : '';
   try {
     for (const f of form.images.files) data.append('images', await shrink(f), 'photo.jpg');
@@ -216,14 +240,13 @@ form.onsubmit = async (e) => {
   data.set('is_public', $('#pub').checked ? '1' : '0');
   data.set('members', [...mates.keys()].join(','));
   try {
-    // 새 작품은 홍보 키트로, 고친 작품은 상세 페이지로 가요.
     const r = await api(id ? '/api/projects/' + id : '/api/projects', id ? 'PUT' : 'POST', data);
-    dropDraft(); // 저장했으니 임시 저장은 지워요
+    dropDraft();
     location.href = id ? '/project.html?id=' + r.id : '/kit.html?id=' + r.id;
   } catch (err) { bad(null, err.message); $('#submit').disabled = false; }
 };
 
-// 로그인해야 쓸 수 있어요. 고치기라면 내 작품인지 확인하고 원래 값을 채워요.
+// [뜻/역할] 페이지 초기 실행 함수예요. 비로그인이면 로그인 화면으로 보내고, 수정 모드(`id` 있음)이면 기존 작품 정보를 불러와 칸을 채운 뒤 임시 저장본(`loadDraft()`)이 있으면 그 위에 덮어써 줘요.
 (async () => {
   me = await nav();
   if (!me) return toLogin();
@@ -244,7 +267,7 @@ form.onsubmit = async (e) => {
   $('#pub').checked = !!p.is_public;
   oldImg = p.images[0] || null;
   $('#pvImg').src = oldImg || FALLBACK_IMG;
-  loadDraft(); // 서버 값 위에 쓰던 글을 덮어요
+  loadDraft();
   drawCats(); drawMates(); preview();
 })();
 </script>

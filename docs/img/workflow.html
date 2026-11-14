@@ -1,7 +1,14 @@
 <!doctype html>
+<!-- ==========================================================================
+  [파일 개요] `docs/WORKFLOW.md` 맨 위에 들어가는 한 장짜리 워크플로 요약 그림(`docs/img/workflow.png`)의 원본 HTML 파일이에요.
+  - 브라우저에서 이 파일을 열면 가로 1800px 크기의 다이어그램 보드가 그려지며, 내용을 고친 뒤 화면을 캡처해 `workflow.png`로 저장하면 돼요.
+  - 팀원 4명(김가은·김서율·한지석·김예준)과 Cloudflare의 역할을 색깔별로 구분해 보여 줘요.
+  [비유] 전시관 전체 구조와 팀원별 담당 구역을 한 장에 그려 둔 종합 안내판 원본 도면이에요.
+=========================================================================== -->
 <html lang="ko"><head><meta charset="utf-8">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
 <style>
+/* [뜻/역할] 배경색·패널색·팀원별 상징 색상(`--ga`, `--se`, `--ji`, `--ye`, `--cf`)을 CSS 변수로 정의하고 가로 1800px 고정 보드로 배치해요. */
 :root{--bg:#0b0c10;--panel:#14161c;--line:#2a2d36;--ink:#f2f1ee;--mute:#a6a9b2;--accent:#F2B33D;
 --ga:#E8875B;--se:#5FB3A6;--ji:#7C9CF0;--ye:#C08BE0;--cf:#F38020}
 *{box-sizing:border-box;margin:0}
@@ -15,6 +22,7 @@ h1 span{color:var(--accent)}
 .sec h2{font-size:22px;font-weight:700;display:flex;align-items:center;gap:12px;margin-bottom:20px}
 .sec h2 b{font-family:"JetBrains Mono";font-size:15px;color:var(--bg);background:var(--accent);border-radius:8px;padding:3px 10px}
 .row{display:flex;align-items:stretch;gap:0}
+/* [뜻/역할] `color-mix(in srgb, var(--c) 12%, transparent)`로 각 담당자 색상을 12%만 투명하게 섞어 박스 배경색으로 칠해요. */
 .box{flex:1;border:2px solid var(--c,#555);border-radius:16px;padding:14px 16px;background:color-mix(in srgb,var(--c,#555) 12%,transparent)}
 .box .t{font-size:19px;font-weight:700}
 .box .d{font-size:14.5px;color:var(--mute);margin-top:5px;line-height:1.5}
@@ -32,6 +40,7 @@ h1 span{color:var(--accent)}
 <p class="sub">학생 프로젝트 전시관 · 사용자가 버튼을 누르면 화면 → 서버(Worker) → 저장소(D1·R2) 순서로 흘러가요 · https://p-art.swx2.workers.dev</p>
 <div class="legend"><span><i style="background:var(--ga)"></i>김가은 · 로그인·등록 폼·전시 페이지</span><span><i style="background:var(--se)"></i>김서율 · 공통 UI·갤러리·프로필</span><span><i style="background:var(--ji)"></i>한지석 · API·DB·권한</span><span><i style="background:var(--ye)"></i>김예준 · 규칙·검수·배포</span><span><i style="background:var(--cf)"></i>Cloudflare</span></div>
 
+<!-- [뜻/역할] 1번 섹션: 사용자가 가입부터 작품 등록·전시·반응·공유·신고까지 겪는 7단계 흐름이에요. -->
 <div class="sec"><h2><b>1</b>사용자 흐름 — 등록 → 전시 → 반응</h2>
 <div class="row">
  <div class="box ga"><div class="t">가입·로그인</div><div class="d">한 칸씩 입력<br>쿠키로 30일 유지</div><div class="f">signup · login.html</div></div><div class="arr">→</div>
@@ -43,6 +52,7 @@ h1 span{color:var(--accent)}
  <div class="box ye"><div class="t">신고·관리</div><div class="d">3명 신고 → 자동 숨김<br>관리자 화면</div><div class="f">admin.html</div></div>
 </div></div>
 
+<!-- [뜻/역할] 2번 섹션: 브라우저(frontend) ⇄ Cloudflare Worker(backend) ⇄ 저장소(D1·R2) 사이의 아키텍처 흐름이에요. -->
 <div class="sec"><h2><b>2</b>코드가 흐르는 길 — 화면 → 서버 → 저장소</h2>
 <div class="arch">
  <div class="col"><div class="colt">브라우저 · frontend/</div>
@@ -69,6 +79,7 @@ h1 span{color:var(--accent)}
 <p class="note">예) <b>작품 걸기</b>: edit.html 저장 → <b>POST /api/projects</b> → projects.js readForm 검사 → 사진은 <b>R2</b>, 글은 <b>D1</b> → { id } → 홍보 키트로 이동</p>
 </div>
 
+<!-- [뜻/역할] 3번 섹션: 로컬 브랜치 개발부터 PR·CI 검증·dev/main 병합·Cloudflare 자동 배포까지의 과정이에요. -->
 <div class="sec"><h2><b>3</b>개발 · 배포 흐름</h2>
 <div class="row">
  <div class="box ye"><div class="t">feature/… 브랜치</div><div class="d">npm run dev<br>(내 컴퓨터에 가짜 D1·R2)</div></div><div class="arr">→</div>

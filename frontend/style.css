@@ -1,4 +1,15 @@
-/* [파일 개요] PART 화면 디자인이에요. 색은 :root 변수에서 바꾸고, 밝은 테마는 :root.light가 덮어써요. */
+/* ============================================================================
+ * [파일 개요] PART 프로젝트의 모든 화면 디자인(스타일시트)을 담당하는 파일이에요.
+ * - 색상·그림자·유리 질감 값은 맨 위 `:root`(어두운 테마 기본값)와 `:root.light`(밝은 테마 덮어쓰기) CSS 변수로 한곳에서 관리해요.
+ * - 화면 폭에 따라 배치가 자동으로 바뀌는 반응형 디자인은 `@container (max-width: ...)` 쿼리를 사용해요.
+ * [비유] 미술관의 벽지 색상, 액자 테두리, 조명 밝기, 안내판 글씨체를 정해 둔 인테리어 규정집이에요.
+ * ============================================================================ */
+
+/* ── 1. 테마 색상 변수 및 기본 초기화 (:root, :root.light, .sr) ──
+ * [뜻/역할] 어두운 테마(기본)와 밝은 테마(`.light`)의 색상 팔레트를 CSS 변수(`--이름`)로 정의하고,
+ *   전체 컨테이너에 `container-type: inline-size`를 걸어 하위 요소들이 컨테이너 폭(`cqi`)에 맞춰 크기를 조절하게 해요.
+ * [문법] `var(--accent)`처럼 변수 이름으로 어디서든 색상을 꺼내 쓸 수 있고, `<html>`에 `.light` 클래스가 붙으면 `:root.light`의 값으로 즉시 바뀌어요.
+ * [작성 이유] 색상을 바꿀 때 파일 전체를 뒤지지 않고 맨 위 두 줄만 고치면 모든 페이지의 테마가 한꺼번에 바뀌게 하기 위해서예요. */
 :root{--accent:#F2B33D;--bg:#08080A;--ink:#F4F3EF;--mute:#A9A8A4;--dim:#8A8986;--line:rgba(255,255,255,.10);--glass:rgba(255,255,255,.05);--glass2:rgba(255,255,255,.09);--edge:rgba(255,255,255,.12);--edge2:rgba(255,255,255,.28);--field:rgba(255,255,255,.04);--shade:transparent;--fade:#08080A;--onimg:rgba(242,241,238,.72);--imgfade:rgba(6,7,10,.6);--glow1:rgba(242,179,61,.30);--glow2:rgba(124,108,255,.22);--glow3:rgba(64,200,255,.12);--hi:rgba(255,255,255,.22);--drop:0 30px 60px -30px rgba(0,0,0,.8);container-type:inline-size;position:relative;overflow-x:clip;background:var(--bg);color:var(--ink);font-family:"Inter Tight","Noto Sans KR","Apple SD Gothic Neo",system-ui,sans-serif;font-size:15px;line-height:1.7;letter-spacing:-.01em;-webkit-font-smoothing:antialiased}
 :root.light{--accent:#D6491C;--bg:#F6F4EF;--ink:#15130F;--mute:#57524A;--dim:#6A645A;--line:rgba(21,19,15,.09);--glass:rgba(255,255,255,.55);--glass2:rgba(255,255,255,.82);--edge:rgba(21,19,15,.08);--edge2:rgba(21,19,15,.22);--field:rgba(255,255,255,.75);--shade:rgba(246,244,239,.28);--fade:#F6F4EF;--onimg:#57524A;--imgfade:rgba(246,244,239,.4);--glow1:rgba(214,73,28,.20);--glow2:rgba(242,179,61,.26);--glow3:rgba(120,150,255,.10);--hi:rgba(255,255,255,.95);--drop:0 24px 50px -28px rgba(60,40,20,.28)}
 html{background:var(--bg)}
@@ -9,6 +20,14 @@ body{margin:0;background:var(--bg);min-height:100vh}
 .sr img{display:block;max-width:100%}
 .sr :focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:12px}
 .sr h1,.sr h2,.sr h3,.sr p{margin:0}
+
+/* ── 2. 공통 유틸리티 클래스 (.mono, .wrap, .glass, .btn, .hide, .vh) ──
+ * [뜻/역할]
+ * - `.mono`: 영문 소제목·배지에 쓰는 고정폭(Monospace) 대문자 스타일이에요.
+ * - `.wrap`: 최대 폭 1280px로 가운데 정렬하고 좌우 여백을 화면 크기에 따라 `clamp(20px, 4cqi, 56px)`로 유연하게 주는 컨테이너예요.
+ * - `.glass`: 뒷배경을 흐리게 비추는 반투명 유리 질감(`backdrop-filter: blur(24px)`) 효과예요.
+ * - `.btn`, `.btn-hot`, `.btn-danger`: 둥근 캡슐 모양(`border-radius: 999px`) 버튼들과 강조/위험 버튼 스타일이에요.
+ * - `.vh`(Visually Hidden): 눈에는 보이지 않지만 시각장애인용 화면 낭독기(스크린 리더)는 읽을 수 있게 남기는 웹 접근성 클래스예요. */
 .mono{font-family:"JetBrains Mono",ui-monospace,Menlo,monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim)}
 .wrap{max-width:1280px;margin:0 auto;padding-inline:clamp(20px,4cqi,56px)}
 .glass{background:linear-gradient(160deg,var(--glass2),var(--glass));border:1px solid var(--edge);-webkit-backdrop-filter:blur(24px) saturate(160%);backdrop-filter:blur(24px) saturate(160%);box-shadow:inset 0 1px 0 var(--hi),var(--drop)}
@@ -22,7 +41,8 @@ a.btn-hot,a.btn-hot:hover{color:var(--bg)}
 .hide{display:none!important}
 .vh{position:absolute!important;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 
-/* 상단 메뉴 */
+/* ── 3. 상단 내비게이션 바 (.nav) ──
+ * [뜻/역할] 스크롤을 내려도 화면 위쪽(`top: 16px`)에 알약 모양으로 떠 있는(`position: sticky`) 상단 메뉴 바예요. */
 .nav{position:sticky;top:16px;z-index:20;margin:16px auto 0;width:min(700px,calc(100% - 32px));display:flex;align-items:center;gap:8px;padding:8px 8px 8px 20px;border-radius:999px}
 .logo{display:flex;align-items:center;gap:10px;background:none;border:0;padding:0;font-family:"Inter Tight","Noto Sans KR",sans-serif;font-size:15px;font-weight:600;letter-spacing:-.02em}
 .wm{font-family:"Inter Tight","Noto Sans KR",sans-serif;font-weight:400;font-size:20px;letter-spacing:-.06em;line-height:1}
@@ -40,7 +60,8 @@ a.btn-hot,a.btn-hot:hover{color:var(--bg)}
 .theme-btn{flex:none;width:36px;height:36px;border-radius:50%;border:1px solid var(--edge);background:var(--glass);display:flex;align-items:center;justify-content:center;font-size:15px;padding:0}
 .theme-btn:hover{border-color:var(--edge2)}
 
-/* 히어로 (배경 빛 .stage, 큰 PART 글자, 떠 있는 카드 .float) */
+/* ── 4. 홈 히어로 배너 (.hero, .stage, .stack, .float) ──
+ * [뜻/역할] 홈 화면 맨 위의 대형 타이틀(`PART`)과 은은하게 번지는 배경 조명(`.stage`), 그리고 오른쪽에 비스듬히 겹쳐 떠 있는 인기 작품 카드 3장(`.float.f0`, `.f1`, `.f2`) 스타일이에요. */
 .hero{position:relative;margin-top:-72px;min-height:820px;display:flex;align-items:flex-end;isolation:isolate;overflow:hidden}
 .hero-bg{position:absolute;inset:0;z-index:-3}
 .hero-bg img{width:100%;height:100%;object-fit:cover;filter:grayscale(.6) brightness(.8);transform:scale(1.04)}
@@ -86,7 +107,7 @@ a.btn-hot,a.btn-hot:hover{color:var(--bg)}
 .f1{right:190px;top:120px;z-index:2;rotate:-4deg}
 .f2{right:30px;top:250px;rotate:2deg}
 
-/* 섹션 공통 */
+/* ── 5. 섹션 공통 여백 및 제목 (.sec, .sec-head, .h2) ── */
 .sec{position:relative;padding-block:clamp(88px,10cqi,150px)}
 .sec-head{display:flex;justify-content:space-between;align-items:flex-end;gap:24px;flex-wrap:wrap;margin-bottom:44px}
 .sec-head .mono,.cta .mono{color:var(--accent);font-size:11.5px;letter-spacing:.14em}
@@ -94,7 +115,8 @@ a.btn-hot,a.btn-hot:hover{color:var(--bg)}
 .h2 b{font-weight:600;color:var(--mute)}
 .page-top{padding-top:140px;padding-bottom:110px}
 
-/* 이번 주의 작품 */
+/* ── 6. 이번 주의 작품 (.feat) ──
+ * [뜻/역할] 응원 1등 작품의 대표 사진을 배경에 가득 깔고 왼쪽 아래에 유리 패널(`.feat-panel`)을 얹는 대형 배너예요. */
 .feat{position:relative;border-radius:24px;overflow:hidden;min-height:540px;display:flex;align-items:flex-end;padding:clamp(18px,2.4cqi,32px);isolation:isolate}
 .feat-img{position:absolute;inset:0;z-index:-1;border:0;padding:0;background:none}
 .feat-img img{width:100%;height:100%;object-fit:cover}
@@ -103,7 +125,11 @@ a.btn-hot,a.btn-hot:hover{color:var(--bg)}
 .feat-panel h3{font-weight:600;font-size:clamp(26px,2.6cqi,34px);letter-spacing:-.05em;line-height:1.15}
 .feat-panel p{color:var(--mute);font-weight:400}
 
-/* 작품 목록: 검색, 정렬, 분야 칩, 카드 */
+/* ── 7. 작품 목록: 검색창(.search), 정렬(.seg), 분야 칩(.chips), 카드 그리드(.grid, .card, .up) ──
+ * [뜻/역할]
+ * - `.grid`: 화면 폭에 맞춰 최소 330px짜리 카드를 한 줄에 자동으로 여러 개 배치(`repeat(auto-fill, minmax(...))`)해요.
+ * - `.card`: 4:5 비율(`aspect-ratio: 4/5`) 액자 모양이며, 아래쪽에 유리 바(`.card-bar`)와 ▲ 응원 버튼(`.up`)이 들어가요.
+ * - `.up[aria-pressed="true"]`: 내가 이미 응원한 작품은 버튼 배경이 강조색(`var(--accent)`)으로 채워져요. */
 .tools{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
 .search{display:flex;align-items:center;gap:10px;min-height:46px;padding:0 18px;border-radius:999px;min-width:min(300px,100%);flex:1 1 260px;max-width:360px}
 .search svg{width:16px;height:16px;flex:none;opacity:.6}
@@ -140,7 +166,7 @@ a.btn-hot,a.btn-hot:hover{color:var(--bg)}
 .up-wide{width:auto;height:48px;flex-direction:row;gap:10px;padding:0 20px;border-radius:999px}
 .empty{grid-column:1/-1;border-radius:26px;padding:56px 24px;text-align:center;display:flex;flex-direction:column;gap:18px;align-items:center}
 
-/* 사용법, 하단 안내, 바닥글, 알림 */
+/* ── 8. 3단계 사용법(.steps), 하단 배너(.cta), 바닥글(.foot), 토스트 알림(.toast) ── */
 .steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:22px;list-style:none;margin:0;padding:0}
 .step{border-radius:20px;padding:10px 10px 22px;display:flex;flex-direction:column;gap:16px}
 .step-img{border-radius:14px;overflow:hidden;aspect-ratio:16/11}
@@ -157,7 +183,9 @@ a.btn-hot,a.btn-hot:hover{color:var(--bg)}
 .foot p{color:var(--dim);font-size:13px}
 .toast{position:fixed;left:50%;bottom:28px;z-index:50;transform:translateX(-50%);border-radius:999px;padding:12px 22px;font-size:14px}
 
-/* 작품 상세 */
+/* ── 9. 작품 상세 페이지 (.d-hero, .d-grid, .side, .gform, .glist, .others) ──
+ * [뜻/역할] 상세 페이지의 상단 배너(`.d-hero`), 본문과 오른쪽 고정 정보 패널(`.side`) 2단 배치(`.d-grid`),
+ *   스크린샷 격자(`.shots`), 한 줄 감상 방명록(`.gform`, `.glist`), 다른 추천 작품 3개(`.others`) 스타일이에요. */
 .d-hero{position:relative;min-height:720px;margin-top:-72px;display:flex;align-items:flex-end;isolation:isolate;overflow:hidden}
 .d-panel{border-radius:22px;padding:clamp(22px,2.6cqi,36px);max-width:620px;display:flex;flex-direction:column;gap:14px}
 .d-panel h1{font-weight:600;font-size:clamp(34px,4cqi,52px);letter-spacing:-.05em;line-height:1.1}
@@ -192,7 +220,7 @@ a.btn-hot,a.btn-hot:hover{color:var(--bg)}
 .mini div{padding:14px 16px 18px;display:flex;justify-content:space-between;align-items:center;gap:10px}
 .mini span{color:var(--accent);font-family:"JetBrains Mono",monospace;font-size:12px}
 
-/* 작품 걸기, 홍보 키트, 프로필 */
+/* ── 10. 작품 걸기·고치기(.reg, .form, .drop, .prev), 홍보 키트(.kit, .copy), 프로필(.prof) ── */
 .reg{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr);gap:56px;align-items:start;padding-top:140px}
 .form{display:flex;flex-direction:column;gap:22px}
 .f label,.f legend{display:flex;align-items:center;gap:10px;font-size:14px;color:var(--mute);margin-bottom:10px}
@@ -218,7 +246,8 @@ a.btn-hot,a.btn-hot:hover{color:var(--bg)}
 .prof{border-radius:22px;padding:clamp(22px,2.6cqi,36px);display:flex;flex-direction:column;gap:14px;max-width:620px}
 .prof-name{font-family:"Inter Tight","Noto Sans KR",sans-serif;font-size:clamp(30px,3.4cqi,44px);font-weight:600;letter-spacing:-.05em;line-height:1.15}
 
-/* 반응형: 화면 폭에 따라 한 줄로 쌓아요 */
+/* ── 11. 반응형 레이아웃 (@container 980px 이하 태블릿, 640px 이하 모바일) ──
+ * [뜻/역할] 화면 폭이 좁아지면 2단/3단 그리드를 1단(세로 쌓기)으로 바꾸고 글자·여백 크기를 모바일에 맞게 줄여요. */
 @container (max-width:980px){
   .hero-in,.d-grid,.reg,.kit{grid-template-columns:minmax(0,1fr)}
   .stack{height:380px;max-width:460px}
@@ -248,7 +277,9 @@ a.btn-hot,a.btn-hot:hover{color:var(--bg)}
   .reg,.kit{padding-top:110px}
 }
 
-/* 로그인 · 가입 */
+/* ── 12. 로그인 · 가입 전용 풀스크린 화면 (.auth-page, .big-pill, .auth-top, .auth-done) ──
+ * [뜻/역할] 배경 사진 위에 어두운 베일(`.veil`)을 씌우고 화면 한가운데에 커다란 유리 캡슐 입력창(`.big-pill`)을 배치해요.
+ *   `.auth-top`의 높이를 `76px`로 고정해 단계가 넘어갈 때 입력창 위치가 위아래로 흔들리지 않게 잡아 줘요. */
 .auth-page{position:relative;min-height:100vh;overflow:hidden;display:flex;flex-direction:column;align-items:center;background:#0E0C0A;color:#fff;font-family:"Noto Sans KR",system-ui,sans-serif}
 .auth-page>img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;filter:sepia(.55) saturate(1.3) brightness(.62)}
 .auth-page .veil{position:absolute;inset:0;background:linear-gradient(180deg,rgba(14,12,10,.15) 0%,rgba(14,12,10,.35) 60%,rgba(14,12,10,.75) 100%)}
@@ -278,7 +309,7 @@ a.btn-hot,a.btn-hot:hover{color:var(--bg)}
 .auth-page footer a{color:#fff;text-underline-offset:4px}
 @media (max-width:640px){.big-pill{min-height:68px;padding-left:22px}.big-pill input{font-size:18px}}
 
-/* 사이트 미리보기 · 통계 · 팀원 · 관리 */
+/* ── 13. 사이트 미리보기(.site-pv), 통계(.stats, .tbl), 팀원(.mates), 임시 저장(.draft), 관리(.reps, .rep) ── */
 .site-pv{display:flex;flex-direction:column;gap:10px}
 .site-pv iframe{width:100%;height:min(70vh,640px);border:1px solid var(--line);border-radius:18px;background:var(--field)}
 .site-pv p{color:var(--dim);font-size:13px}
