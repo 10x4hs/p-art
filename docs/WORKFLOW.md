@@ -1,5 +1,9 @@
 # PART 워크플로 & 아키텍처 시각화 가이드
 
+![PART 워크플로 한눈에 보기](img/workflow.png)
+
+<sub>그림 원본: [img/workflow.html](img/workflow.html) — 고친 뒤 브라우저로 열어 캡처하면 돼요.</sub>
+
 > 팀원이 프로젝트 전체 구조와 데이터의 흐름을 **한눈에 그림으로 이해**할 수 있도록 정리한 문서예요.
 > GitHub에서 이 파일을 열면 모든 Mermaid 다이어그램이 자동으로 선명하게 렌더링돼요.
 > 코드 한 줄 한 줄에 대한 상세 해설은 [EXPLAIN.md](../EXPLAIN.md)를 함께 참고해 주세요.
