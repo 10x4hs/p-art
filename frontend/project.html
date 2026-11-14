@@ -1,10 +1,16 @@
 <!doctype html>
-<!-- [파일 개요] 작품 상세(/project.html?id=번호): 소개, 응원·북마크, 사이트 미리보기, 만든 이야기, 화면 사진, 방명록, 신고. 내 작품이면 통계·고치기·내리기. -->
+<!-- ==========================================================================
+  [파일 개요] 작품 하나를 자세히 감상하는 작품 상세 페이지(`/project.html?id=번호`)예요.
+  - 작품 소개, 바로 해 보기 링크, ▲ 응원, ☆ 북마크, 사이트 미리보기(sandbox iframe), 만든 이야기,
+    화면 스크린샷, 함께 만든 팀원, 💬 한 줄 감상 방명록, 🚩 신고 기능을 제공해요.
+  - 내가 올린 작품(`p.mine`)이면 조회·응원·감상·북마크 통계와 홍보 키트·고치기·내리기 버튼도 함께 보여요.
+  [비유] 전시실 벽에 걸린 작품 한 점 앞의 상세 해설판이자 관람객 방명록 코너예요.
+=========================================================================== -->
 <html lang="ko">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>작품 · PART</title>
-<!-- 공유 미리보기 기본값. 작품 페이지는 서버(backend/src/og.js)가 작품마다 바꿔 보내요. -->
+<!-- [뜻/역할] 공유 미리보기 기본 태그예요. 실제 공개 작품 주소(`/project.html?id=번호`)로 요청이 오면 서버(`backend/src/og.js`)가 이 태그들을 그 작품의 제목·소개·대표 사진으로 실시간 교체해서 보내 줘요. -->
 <meta name="description" content="수행평가로 만든 웹페이지·게임·도구를 링크 대신 작품처럼 걸어 두는 학생 전시관이에요.">
 <meta property="og:type" content="website"><meta property="og:site_name" content="PART">
 <meta property="og:title" content="PART · 학생 작품 전시관">
@@ -27,20 +33,24 @@
 
 <script src="/js/app.js"></script>
 <script>
+// [뜻/역할] 주소창에서 작품 번호(`id`)를 읽고, 상단 메뉴(`nav()`)를 그리면서 로그인한 사용자 정보를 프로미스(`meP`)로 받아 둬요.
 const id = param('id');
-const meP = nav(); // 로그인한 사람(없으면 null)
+const meP = nav();
 
-const bmLabel = (on) => (on ? '★ 북마크됨' : '☆ 북마크'); // 켜지면 ★로 바뀌어요
+// [뜻/역할] 북마크 상태(`on`)에 따라 버튼 글자를 `'★ 북마크됨'` 또는 `'☆ 북마크'`로 돌려줘요.
+const bmLabel = (on) => (on ? '★ 북마크됨' : '☆ 북마크');
 
+// [뜻/역할] 작품 상세 정보와 다른 추천 작품 3개를 불러와 화면 전체(`#main`)를 그리고 버튼 이벤트들을 연결해요.
+// [문법]
+// - 작품이 없거나 남의 비공개/숨김 작품이어서 에러가 나면 `.catch(() => null)`로 받아 안내 화면(`notFound`)을 보여 줘요.
+// - 내 작품(`p.mine`)일 때만 조회·응원·감상·북마크 통계(`.stats`)와 홍보 키트·고치기·내리기 버튼(`.owner`)을 렌더링해요.
+// - 로그인한 다른 회원(`me && !p.mine`)에게만 '신고' 버튼(`#report`)을 보여 줘요.
 async function load() {
   const me = await meP;
-  // 없거나 남의 비공개 작품이면 null이 돼요.
   const p = await api('/api/projects/' + id).catch(() => null);
   if (!p) return ($('#main').innerHTML = `<div class="wrap page-top">${notFound('없거나 비공개인 작품이에요.')}</div>`);
   document.title = p.title + ' · PART';
-  // 아래 '이 작품도 걸려 있어요'에 보여 줄 다른 인기 작품 3개예요.
   const others = (await api('/api/projects?sort=hot')).filter((o) => o.id !== p.id && o.is_public).slice(0, 3);
-  // 내 작품(p.mine)일 때만 홍보 키트·고치기·내리기 버튼(.owner)이 보여요. 만든 이야기는 줄바꿈을 <br>로 바꿔요.
   $('#main').innerHTML = `
   <header class="d-hero">
     <div class="hero-bg"><img src="${esc(imgOf(p))}" alt=""></div>
@@ -110,8 +120,12 @@ async function load() {
     <div class="others">${others.map((o) => `<a class="mini" href="/project.html?id=${o.id}" style="text-decoration:none;display:block"><img src="${esc(imgOf(o))}" alt="" loading="lazy"><div><b style="font-weight:500">${esc(o.title)}</b><span>▲ ${o.likes}</span></div></a>`).join('')}</div>
   </section>` : '<div style="height:80px"></div>'}`;
 
+  // [뜻/역할] '주소 복사' 버튼을 누르면 현재 작품의 공유 주소를 클립보드에 복사해요.
   $('#share').onclick = () => copyText(pageUrl(p.id), '작품 주소를 복사했어요');
-  // 미리보기는 누를 때만 iframe을 만들어요(안 누르면 남의 사이트를 불러오지 않아요).
+
+  // [뜻/역할] '미리보기' 버튼(`#pvBtn`)을 눌렀을 때만 외부 작품 사이트를 안전한 샌드박스 `<iframe>`으로 불러와 보여 줘요.
+  // [문법] `sandbox="allow-scripts allow-forms allow-same-origin allow-popups"`와 `referrerpolicy="no-referrer"`를 걸어 외부 사이트가 부모 창(PART)을 마음대로 이동시키거나 조작하지 못하게 격리해요.
+  // [작성 이유] 상세 페이지를 열자마자 무조건 iframe을 불러오면 데이터가 낭비되고 느려지므로, 사용자가 버튼을 눌러 요청했을 때만 지연 생성(Lazy Load)해요.
   $('#pvBtn').onclick = () => {
     const box = $('#pv'), open = !box.classList.toggle('hide');
     $('#pvBtn').setAttribute('aria-expanded', open);
@@ -120,6 +134,8 @@ async function load() {
       <p>사이트가 미리보기를 막으면 '바로 해 보기'로 열어 주세요.</p>`;
     if (open) box.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
+
+  // [뜻/역할] '☆ 북마크' 버튼(`#bm`)을 누르면 서버에 북마크 토글 요청을 보내고 버튼 표시와 통계 숫자를 업데이트해요.
   $('#bm').onclick = async () => {
     try {
       const r = await api(`/api/projects/${p.id}/bookmark`, 'POST');
@@ -129,17 +145,23 @@ async function load() {
       toast(r.bookmarked ? '북마크했어요. 내 프로필에서 모아 볼 수 있어요' : '북마크를 뺐어요');
     } catch (err) { if (err.status === 401) { toast('로그인하면 북마크할 수 있어요'); setTimeout(toLogin, 900); } else toast(err.message); }
   };
+
+  // [뜻/역할] '신고' 버튼(`#report`)을 누르면 신고 사유를 입력받아 서버에 전송해요.
   $('#report')?.addEventListener('click', async () => {
     const reason = prompt('신고하는 까닭을 짧게 적어 주세요 (100자까지)');
     if (reason === null) return;
     try { await api(`/api/projects/${p.id}/report`, 'POST', { reason }); toast('신고했어요. 관리자가 살펴볼게요'); }
     catch (err) { toast(err.message); }
   });
+
+  // [뜻/역할] 내 작품의 '내리기' 버튼(`#del`)을 누르면 확인창을 거쳐 작품을 삭제하고 내 프로필로 이동해요.
   $('#del')?.addEventListener('click', async () => {
     if (!confirm('작품을 내릴까요? 사진과 감상도 함께 지워져요.')) return;
     await api('/api/projects/' + p.id, 'DELETE');
     location.href = '/profile.html?id=' + p.user_id;
   });
+
+  // [뜻/역할] 방명록 폼(`#gform`) 제출 시 새 한 줄 감상을 서버에 등록하고 방명록 목록(`guests()`)을 새로 고쳐요.
   $('#gform').onsubmit = async (e) => {
     e.preventDefault();
     try {
@@ -152,7 +174,7 @@ async function load() {
   guests();
 }
 
-// 방명록을 그려요. 지울 수 있는 사람(g.canDelete)에게만 '지우기' 버튼이 보여요.
+// [뜻/역할] 서버에서 이 작품의 한 줄 감상 목록을 받아 와 `#glist`에 그리고, 작품 주인(`g.canDelete`)에게는 각 감상 옆에 '지우기' 버튼을 보여 줘요.
 async function guests() {
   const rows = await api(`/api/projects/${id}/comments`);
   $('#gcount').textContent = rows.length;
@@ -161,6 +183,8 @@ async function guests() {
       ${g.canDelete ? `<button class="g-del" type="button" data-del="${g.id}" aria-label="이 감상 지우기">지우기</button>` : ''}</li>`).join('')
     : '<p style="color:var(--dim);margin-top:14px">아직 감상이 없어요. 첫 번째로 남겨 주세요.</p>';
 }
+
+// [뜻/역할] 방명록의 '지우기' 버튼(`[data-del]`) 클릭을 이벤트 위임으로 받아 감상을 삭제해요.
 $('#main').addEventListener('click', async (e) => {
   const b = e.target.closest('[data-del]');
   if (!b || !confirm('이 감상을 지울까요?')) return;

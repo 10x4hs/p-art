@@ -1,10 +1,16 @@
 <!doctype html>
-<!-- [파일 개요] 프로필(/profile.html?id=회원번호): 이름·소개, 걸어 둔 작품, 함께 만든 작품. 내 프로필이면 정보 수정·작품 통계·모아 보기(북마크)도 보여요. -->
+<!-- ==========================================================================
+  [파일 개요] 작가 프로필 및 내 공간 페이지(`/profile.html?id=회원번호`)예요.
+  - 누구나 볼 수 있는 항목: 작가 닉네임·소개(`#info`), 직접 걸어 둔 작품(`#grid`), 팀원으로 함께 만든 작품(`#team`).
+  - 내 프로필(`mine = true`)일 때만 추가로 보이는 항목: 내 닉네임·소개 수정 폼, 로그아웃·회원 탈퇴 버튼,
+    내 비공개 작품, 작품별 조회·응원·감상·북마크 통계 표(`#stats`), 내가 북마크한 작품 모아 보기(`#saved`).
+  [비유] 작가 개인전 방이자, 본인에게는 작업 기록과 스크랩북을 관리하는 개인 서재예요.
+=========================================================================== -->
 <html lang="ko">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>프로필 · PART</title>
-<!-- 공유 미리보기 기본값. 작품 페이지는 서버(backend/src/og.js)가 작품마다 바꿔 보내요. -->
+<!-- [뜻/역할] 공유 미리보기 기본 메타 태그예요. -->
 <meta name="description" content="수행평가로 만든 웹페이지·게임·도구를 링크 대신 작품처럼 걸어 두는 학생 전시관이에요.">
 <meta property="og:type" content="website"><meta property="og:site_name" content="PART">
 <meta property="og:title" content="PART · 학생 작품 전시관">
@@ -34,16 +40,19 @@
 
 <script src="/js/app.js"></script>
 <script>
+// [뜻/역할] 주소창에서 조회할 회원 번호(`id`)를 꺼내고, 각 섹션 제목 HTML을 똑같은 모양으로 만들어 주는 `head(영문소제목, 한글제목)` 함수를 준비해요.
 const id = param('id');
-// 섹션 제목이에요. 위의 '걸어 둔 작품'과 같은 모양이에요.
 const head = (en, ko) => `<div class="sec-head" style="margin:72px 0 34px"><div><p class="mono">${en}</p><h2 class="h2">${ko}</h2></div></div>`;
 
+// [뜻/역할] 현재 로그인한 사용자(`me`)와 프로필 대상 회원(`u`)을 불러와 본인 여부(`mine`)에 맞춰 프로필 화면과 작품 목록들을 차례대로 그려요.
 (async () => {
   const me = await nav();
   const u = await api('/api/users/' + id).catch(() => null);
   if (!u) return ($('#info').innerHTML = notFound('없는 사용자예요.'));
   const mine = me && me.id === u.id;
   document.title = u.nickname + ' · PART';
+
+  // [뜻/역할] 내 프로필(`mine`)이면 이메일 확인·닉네임/소개 수정·로그아웃·탈퇴가 들어 있는 폼(`#pf`)을, 남의 프로필이면 깔끔한 작가 소개 카드만 보여 줘요.
   $('#info').innerHTML = mine ? `
     <form class="prof glass" id="pf">
       <p class="mono">My page · 내 정보</p>
@@ -62,6 +71,8 @@ const head = (en, ko) => `<div class="sec-head" style="margin:72px 0 34px"><div>
       <h1 class="prof-name">${esc(u.nickname)}</h1>
       ${u.bio ? `<p style="color:var(--mute);font-weight:300">${esc(u.bio)}</p>` : ''}
     </div>`;
+
+  // [뜻/역할] 내 프로필일 때만 저장(`PUT /api/me`), 로그아웃(`POST /api/logout`), 회원 탈퇴(`DELETE /api/me`) 버튼 동작을 연결해요.
   if (mine) {
     $('#worksTitle').innerHTML = '내가 건 <b>작품</b>';
     $('#pf').onsubmit = async (e) => {
@@ -75,16 +86,19 @@ const head = (en, ko) => `<div class="sec-head" style="margin:72px 0 34px"><div>
       if (confirm('계정과 작품, 받은 감상이 모두 삭제돼요. 정말 탈퇴할까요?')) { await api('/api/me', 'DELETE'); location.href = '/'; }
     };
   }
-  // 내 프로필이면 서버가 비공개 작품까지 보내 줘요.
+
+  // [뜻/역할] 이 회원이 직접 올린 작품 목록(`?user=번호`)을 가져와 그려요(내 프로필이면 비공개 작품도 함께 포함돼요).
   const list = await api('/api/projects?sort=new&user=' + id);
   $('#grid').innerHTML = list.length ? list.map(card).join('')
     : `<div class="empty glass"><p>아직 걸린 작품이 없어요.</p>${mine ? '<a class="btn btn-hot" href="/edit.html">내 작품 걸기</a>' : ''}</div>`;
-  // 내 작품마다 조회·응원·감상·북마크 수를 표로 보여 줘요(나만 봐요).
+
+  // [뜻/역할] 내 프로필이면서 올린 작품이 있으면, 각 작품의 조회·응원·감상·북마크 수를 한눈에 비교하는 통계 표(`#stats`)를 그려요.
   if (mine && list.length) $('#stats').innerHTML = head('Stats', '작품 <b>통계</b>') + `<div class="tbl glass"><table>
     <thead><tr><th scope="col">작품</th><th scope="col">조회</th><th scope="col">응원</th><th scope="col">감상</th><th scope="col">북마크</th></tr></thead>
     <tbody>${list.map((p) => `<tr><td><a href="/project.html?id=${p.id}">${esc(p.title)}</a></td><td>${p.views}</td><td>${p.likes}</td><td>${p.comments}</td><td>${p.bookmarks}</td></tr>`).join('')}</tbody>
   </table></div>`;
-  // 팀원으로 들어간 작품, 내 프로필이면 북마크한 작품(모아 보기)도 보여요.
+
+  // [뜻/역할] 이 회원이 팀원으로 참여한 작품 목록(`?member=번호`)과, 내 프로필인 경우 내가 북마크한 작품 목록(`?bookmarked=1`)을 가져와 그려요.
   const team = await api('/api/projects?sort=new&member=' + id);
   if (team.length) $('#team').innerHTML = head('Team', '함께 만든 <b>작품</b>') + `<div class="grid">${team.map(card).join('')}</div>`;
   if (!mine) return;

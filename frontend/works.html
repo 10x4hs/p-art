@@ -1,10 +1,14 @@
 <!doctype html>
-<!-- [파일 개요] 전시관(/works.html): 모든 공개 작품을 검색·분야·정렬로 보고, 조건을 주소창에 저장해요. -->
+<!-- ==========================================================================
+  [파일 개요] 모든 공개 작품을 제한 없이 한눈에 모아 보는 전체 전시관(`/works.html`) 페이지예요.
+  - 검색어(`q`), 분야(`cat`), 정렬(`sort`) 조건으로 작품을 찾고, 바뀐 조건을 주소창 URL에 실시간으로 기록해요.
+  [비유] 미술관의 전체 상설 전시실이에요.
+=========================================================================== -->
 <html lang="ko">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>전시관 · PART</title>
-<!-- 공유 미리보기 기본값. 작품 페이지는 서버(backend/src/og.js)가 작품마다 바꿔 보내요. -->
+<!-- [뜻/역할] 공유 미리보기(Open Graph / Twitter Card) 기본 메타 태그예요. -->
 <meta name="description" content="수행평가로 만든 웹페이지·게임·도구를 링크 대신 작품처럼 걸어 두는 학생 전시관이에요.">
 <meta property="og:type" content="website"><meta property="og:site_name" content="PART">
 <meta property="og:title" content="PART · 학생 작품 전시관">
@@ -15,6 +19,7 @@
 <meta name="twitter:title" content="PART · 학생 작품 전시관">
 <meta name="twitter:description" content="수행평가로 만든 웹페이지·게임·도구를 링크 대신 작품처럼 걸어 두는 학생 전시관이에요.">
 <meta name="twitter:image" content="https://p-art.swx2.workers.dev/img/hero.jpg">
+<!-- [뜻/역할] 화면 깜빡임 없이 저장된 밝은 테마(`.light`)를 즉시 적용해요. -->
 <script>try{if(localStorage.getItem('theme')==='light')document.documentElement.classList.add('light')}catch(e){}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600;700&family=Noto+Sans+KR:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400&family=Playfair+Display:wght@600;700&display=swap">
@@ -23,6 +28,7 @@
 <body class="sr">
 <div id="nav"></div>
 
+<!-- [뜻/역할] 전시관 헤더(검색창 `#q`, 인기순/최신순 정렬 버튼, 분야 칩 `#chips`)와 전체 카드 그리드(`#grid`) 영역이에요. -->
 <section class="wrap page-top" id="works" aria-labelledby="works-t">
   <div class="sec-head">
     <div><a class="nav-link" href="/" style="padding-left:0">← 처음으로</a><p class="mono" style="margin-top:16px">Exhibition · <span id="total">0</span> works</p><h1 class="h2" id="works-t">전시관 <b>전체 작품</b></h1></div>
@@ -42,13 +48,18 @@
 <script src="/shared/categories.js"></script>
 <script src="/js/app.js"></script>
 <script>
-// 주소창(?q=&cat=&sort=) 조건으로 시작해서, 홈에서 넘어오거나 공유한 링크도 같은 목록이 나와요.
+// [뜻/역할] 처음 열릴 때 주소창의 쿼리(`?q=&cat=&sort=`)를 읽어 초기 상태(`state`)와 검색창(`#q`) 값을 맞춰요.
+// [문법] `CATS.includes(param('cat'))`으로 목록에 있는 정상 분야일 때만 받아들이고, 아니면 빈 문자열(`''`, 전체)로 시작해요.
+// [작성 이유] 홈에서 '전체 작품 보기'를 눌러 넘어왔거나 친구에게 검색 결과 주소를 공유받았을 때, 똑같은 필터 상태가 바로 열리게 하기 위해서예요.
 const state = { q: param('q') || '', sort: param('sort') === 'new' ? 'new' : 'hot', cat: CATS.includes(param('cat')) ? param('cat') : '' };
 $('#q').value = state.q;
 
+// [뜻/역할] 조건에 맞는 공개 작품을 모두 불러와 화면에 그리고, 주소창 URL도 새로고침 없이 업데이트해요.
+// [문법] `history.replaceState(null, '', '/works.html?' + qs)`는 페이지를 다시 불러오지 않고 브라우저 주소창만 조용히 바꿔 줘요.
+// [작성 이유] 작품을 눌러 상세 페이지에 갔다가 브라우저 '뒤로 가기'를 눌렀을 때 내가 보던 검색·분야 상태가 그대로 남아 있게 하기 위해서예요.
 async function list() {
   const qs = new URLSearchParams({ q: state.q, sort: state.sort, cat: state.cat });
-  history.replaceState(null, '', '/works.html?' + qs); // 새로고침 없이 주소만 바꿔요
+  history.replaceState(null, '', '/works.html?' + qs);
   const rows = (await api('/api/projects?' + qs)).filter((p) => p.is_public);
   $('#total').textContent = rows.length;
   $('#count').textContent = `작품 ${rows.length}개`;

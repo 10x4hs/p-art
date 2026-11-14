@@ -1,295 +1,366 @@
-# PART는 어떻게 돌아가나요?
+# PART 워크플로 & 아키텍처 시각화 가이드
 
-팀원이 코드를 처음 열었을 때 **무엇이 어디서 어떻게 움직이는지** 그림으로 이해하도록 만든 문서예요.
-(GitHub에서 열면 아래 그림이 자동으로 그려져요.)
+> 팀원이 프로젝트 전체 구조와 데이터의 흐름을 **한눈에 그림으로 이해**할 수 있도록 정리한 문서예요.
+> GitHub에서 이 파일을 열면 모든 Mermaid 다이어그램이 자동으로 선명하게 렌더링돼요.
+> 코드 한 줄 한 줄에 대한 상세 해설은 [EXPLAIN.md](../EXPLAIN.md)를 함께 참고해 주세요.
 
-- [1. 전체 구조](#1-전체-구조)
-- [2. 사용자 흐름](#2-사용자-흐름)
-- [3. 기능별 흐름 (시퀀스)](#3-기능별-흐름)
-- [4. DB 구조](#4-db-구조)
-- [5. 개발 → 배포 흐름](#5-개발--배포-흐름)
-- [6. 무엇을 바꾸려면 어디를?](#6-무엇을-바꾸려면-어디를)
+- [1. 전체 시스템 아키텍처](#1-전체-시스템-아키텍처)
+- [2. 페이지 이동 및 사용자 여정 (User Flow)](#2-페이지-이동-및-사용자-여정-user-flow)
+- [3. 핵심 기능별 시퀀스 다이어그램 (Sequence Diagrams)](#3-핵심-기능별-시퀀스-다이어그램-sequence-diagrams)
+  - [3-1. 회원가입 · 로그인 · 세션 쿠키](#3-1-회원가입--로그인--세션-쿠키)
+  - [3-2. 작품 걸기 (클라이언트 사진 압축 + R2 업로드 + 팀원 지정)](#3-2-작품-걸기-클라이언트-사진-압축--r2-업로드--팀원-지정)
+  - [3-3. ▲ 응원 · ☆ 북마크 · 💬 한 줄 감상 (도배 방지)](#3-3--응원---북마크---한-줄-감상-도배-방지)
+  - [3-4. 카카오톡·SNS 공유 미리보기 (동적 Open Graph 치환)](#3-4-카카오톡sns-공유-미리보기-동적-open-graph-치환)
+  - [3-5. 🚩 신고 3회 자동 숨김 & 관리자 검토](#3-5--신고-3회-자동-숨김--관리자-검토)
+- [4. 데이터베이스 구조 (ERD · 전체 9개 테이블)](#4-데이터베이스-구조-erd--전체-9개-테이블)
+- [5. 개발 · 테스트 · CI/CD 자동 배포 파이프라인](#5-개발--테스트--cicd-자동-배포-파이프라인)
+- [6. 무엇을 바꾸려면 어느 파일을 고치나요? (빠른 길찾기 표)](#6-무엇을-바꾸려면-어느-파일을-고치나요-빠른-길찾기-표)
 
 ---
 
-## 1. 전체 구조
+## 1. 전체 시스템 아키텍처
 
 ```mermaid
 flowchart LR
-  subgraph B["🖥️ 브라우저"]
-    H["frontend/*.html<br/>화면 뼈대"]
-    J["frontend/js/app.js<br/>공통 함수"]
-    C["frontend/style.css<br/>디자인"]
+  subgraph B["🖥️ 브라우저 (frontend/)"]
+    H["9개 HTML 페이지<br/>index · works · project · edit<br/>kit · login · signup · profile · admin"]
+    J["frontend/js/app.js<br/>공통 API · 메뉴 · 카드 · 필터 · stepForm"]
+    C["frontend/style.css<br/>다크/라이트 변수 · 유리 질감 · 반응형"]
   end
 
-  subgraph CF["☁️ Cloudflare"]
-    AS["Static Assets<br/>frontend/ 파일 그대로"]
+  subgraph CF["☁️ Cloudflare Edge"]
+    AS["Static Assets<br/>정적 파일 직접 서빙"]
     subgraph W["Worker (backend/src/)"]
-      IX["index.js<br/>주소 나누기·오류 처리"]
-      SE["session.js<br/>로그인 기억"]
-      AU["routes/auth.js<br/>가입·로그인·내 정보"]
-      PR["routes/projects.js<br/>작품·응원·감상"]
+      IX["index.js<br/>라우터 조립 · /uploads · 공통 에러"]
+      OG["og.js<br/>HTMLRewriter 동적 OG 메타 태그"]
+      SE["session.js & password.js<br/>sid 쿠키 세션 · PBKDF2 암호화"]
+      AU["routes/auth.js<br/>가입 · 로그인 · 내 정보 · 팀원 검색"]
+      PR["routes/projects.js<br/>작품 CRUD · 응원 · 북마크 · 감상 · 신고"]
+      AD["routes/admin.js<br/>신고 목록 · 숨김/복구 · 신고 삭제"]
     end
-    D1[("D1 · SQLite<br/>users · projects · …")]
-    R2[("R2 p-art-uploads<br/>사진")]
+    D1[("D1 Database (SQLite)<br/>9개 테이블 (0001 + 0002)")]
+    R2[("R2 Bucket (p-art-uploads)<br/>작품 사진 원본 파일")]
   end
 
-  SH["shared/categories.json<br/>분야 목록 (양쪽 공용)"]
+  SH["shared/categories.json<br/>분야 목록 (서버·화면 공용)"]
 
-  H -- "① 페이지 요청" --> AS
-  AS -- "② HTML·CSS·JS" --> H
-  J -- "③ fetch('/api/…') JSON" --> IX
-  IX --> SE --> AU & PR
-  AU & PR --> D1
-  PR --> R2
-  SH -.-> IX
-  IX -. "/shared/categories.js" .-> J
+  H -- "① 일반 화면 요청" --> AS
+  H -- "② /project.html?id= (공유/상세)" --> OG
+  OG -- "원본 HTML + DB 조회" --> AS & D1
+  J -- "③ fetch('/api/…')" --> IX
+  IX --> SE --> AU & PR & AD
+  AU & PR & AD --> D1
+  PR & AU -- "사진 저장 · 삭제" --> R2
+  IX -- "GET /uploads/:key" --> R2
+  SH -. "import / window.CATS" .-> IX & PR & J
 ```
 
-**핵심은 두 단계예요.**
-1. 화면 파일(`frontend/`)은 Cloudflare가 **그대로** 보내요. Worker를 거치지 않아서 빠르고 무료 한도도 안 써요.
-2. 페이지가 열리면 `app.js`가 `/api/...`를 불러요. 이 주소만 Worker(`backend/src/`)가 처리해서 **데이터만** 돌려줘요.
-
-어떤 주소를 Worker가 먼저 처리할지는 `wrangler.jsonc`의 `run_worker_first`(`/api/*`, `/uploads/*`, `/shared/*`)가 정해요.
-그래서 **보이는 것**은 `frontend/`, **저장·규칙**은 `backend/src/`에서 고쳐요.
-
-> Cloudflare는 주소에서 `.html`을 떼어 줘요 (`/project.html?id=1` → `/project?id=1`). 둘 다 같은 페이지예요.
+> [!TIP]
+> **왜 정적 자산(Static Assets)과 Worker를 나누었나요?**
+> 일반 HTML·CSS·JS 파일은 Worker를 거치지 않고 Cloudflare 정적 자산 서버가 바로 내려주어 속도가 빠르고 무료 요청 한도를 아껴요.
+> 반면 `/api/*`, `/uploads/*`, `/shared/*`, 그리고 카톡 공유 미리보기가 필요한 `/project`, `/project.html`만 `wrangler.jsonc`의 `run_worker_first` 설정을 통해 Worker가 먼저 처리해요.
 
 ---
 
-## 2. 사용자 흐름
+## 2. 페이지 이동 및 사용자 여정 (User Flow)
 
 ```mermaid
 flowchart TD
-  HOME["🏠 홈 /<br/>이번 주의 작품 + 최근 6개"] --> WORKS["🖼️ 전시관 /works.html<br/>검색 · 분야 · 정렬"]
-  HOME --> DETAIL
-  WORKS --> DETAIL["📄 작품 상세 /project.html?id="]
-  DETAIL --> CHEER{"▲ 응원"}
-  CHEER -- 로그인 됨 --> CHEERED["응원 +1 (1인 1회)"]
-  CHEER -- 로그인 안 됨 --> LOGIN
-  DETAIL --> GUEST["💬 한 줄 감상<br/>(로그인 없이)"]
+  HOME["🏠 홈 (/index.html)<br/>히어로 TOP 3 · 이번 주의 작품 · 최근 6개"] --> WORKS["🖼️ 전시관 (/works.html)<br/>전체 작품 검색 · 분야 · 인기/최신 정렬"]
+  HOME --> DETAIL["📄 작품 상세 (/project.html?id=)<br/>소개 · 사이트 미리보기 · 만든 이야기 · 화면 사진"]
+  WORKS --> DETAIL
 
-  HOME --> REG["✏️ 내 작품 걸기 /edit.html"]
-  REG -- 로그인 안 됨 --> LOGIN["🔑 로그인 /login.html<br/>이메일 → 비밀번호"]
-  LOGIN -- "?next= 로 돌아가기" --> REG
-  LOGIN -.-> SIGNUP["🆕 가입 /signup.html<br/>이메일 → 비밀번호 → 닉네임"]
-  REG -- 저장 --> KIT["📣 홍보 키트 /kit.html?id=<br/>문구 복사"]
-  KIT --> SHARE["단톡방·인스타 공유"]
-  SHARE -.-> DETAIL
+  DETAIL --> CHEER{"▲ 응원 / ☆ 북마크"}
+  CHEER -- "로그인 상태" --> TOGGLE["즉시 켜기/끄기 (1인 1회 토글)"]
+  CHEER -- "비로그인 (401)" --> LOGIN["🔑 로그인 (/login.html?next=)"]
+  DETAIL --> GUEST["💬 한 줄 감상 방명록<br/>(로그인 없이 작성 · IP당 1분 5개 제한)"]
+  DETAIL --> REPORT["🚩 신고하기 (로그인 필요)<br/>3명 누적 시 자동 숨김"]
+
+  HOME --> EDIT["✏️ 작품 걸기·고치기 (/edit.html)<br/>실시간 카드 미리보기 · 자동 임시 저장 · 사진 압축"]
+  EDIT -- "비로그인" --> LOGIN
+  LOGIN -- "원래 페이지(?next=)로 복귀" --> EDIT
+  LOGIN -. "계정이 없다면" .-> SIGNUP["🆕 가입 (/signup.html)<br/>이메일 → 비밀번호 → 닉네임 (즉시 로그인)"]
+  EDIT -- "새 작품 등록 완료" --> KIT["📣 홍보 키트 (/kit.html?id=)<br/>단톡방 · 인스타 · 한 줄 문구 복사"]
+  KIT --> DETAIL
+
+  DETAIL --> PROF["👤 작가 프로필 (/profile.html?id=)<br/>걸어 둔 작품 · 팀 참여 작품 · 내 통계 · 북마크 모아 보기"]
+  PROF --> ADMIN["🛡️ 관리자 (/admin.html)<br/>신고 사유 검토 · 숨김 해제 · 신고 비우기"]
 ```
 
 ---
 
-## 3. 기능별 흐름
+## 3. 핵심 기능별 시퀀스 다이어그램 (Sequence Diagrams)
 
-### 3-1. 가입 · 로그인
+### 3-1. 회원가입 · 로그인 · 세션 쿠키
 
 ```mermaid
 sequenceDiagram
+  autonumber
   actor U as 사용자
-  participant F as signup.html<br/>(stepForm)
+  participant F as signup.html / login.html<br/>(stepForm)
   participant A as routes/auth.js
-  participant DB as D1
+  participant P as password.js / session.js
+  participant DB as Cloudflare D1
 
-  U->>F: 이메일 → 비밀번호 → 닉네임 (한 칸씩)
-  Note over F: 칸마다 화면에서 먼저 검사<br/>위쪽 칸 높이 고정 → 입력칸 안 움직임
-  F->>A: POST /api/signup {email, password, nickname}
-  A->>A: 다시 검사 (화면 검사는 우회 가능하니까)
-  A->>A: 이메일 소문자로, 비밀번호 PBKDF2 암호화
-  A->>DB: INSERT users
-  A->>DB: 무작위 세션 번호 저장 (sessions 표)
-  A-->>F: Set-Cookie: sid=세션 번호 + 내 정보
-  F-->>U: "가입 완료" → 작품 걸기
+  U->>F: 이메일 → 비밀번호 → 닉네임 한 칸씩 입력
+  F->>F: 단계별 정규식 검사 (이메일 형식, 영문+숫자 8자↑, 닉네임 2~20자)
+  F->>A: POST /api/signup { email, password, nickname }
+  A->>A: 서버 재검증 + 이메일 소문자 변환(cleanEmail)
+  A->>DB: SELECT 1 FROM users WHERE email = ?
+  alt 이미 가입된 이메일 (409 Conflict)
+    A-->>F: 409 "이미 가입한 이메일이에요"
+    F-->>U: stepForm.goTo(0) → 1단계(이메일 칸)로 자동 복귀
+  else 신규 이메일
+    A->>P: hashPassword(password) (16B 무작위 소금 + PBKDF2 100,000회)
+    A->>DB: INSERT INTO users (email, password, nickname)
+    A->>P: startSession(c, uid)
+    P->>DB: batch: 만료 세션 DELETE + 새 sid(30일) INSERT
+    P-->>F: Set-Cookie: sid=...; HttpOnly; SameSite=Lax + 내 정보 JSON
+    F-->>U: "가입 완료" → /edit.html 이동
+  end
 ```
 
-- 로그인 상태 = **쿠키 속 세션 번호(sid) → D1 sessions 표 → uid**. 배포해도 유지(30일, 쓸 때마다 연장).
-- 비밀번호 원문은 어디에도 저장되지 않아요. PBKDF2를 쓰는 이유: Workers 무료 요금제는 요청당 CPU 10ms 제한이 있는데, bcrypt(순수 JS)는 100ms쯤 걸려요. PBKDF2는 Cloudflare 기본 기능이라 훨씬 빨라요.
+---
 
-### 3-2. 작품 걸기
+### 3-2. 작품 걸기 (클라이언트 사진 압축 + R2 업로드 + 팀원 지정)
 
 ```mermaid
 sequenceDiagram
+  autonumber
   actor U as 사용자
   participant E as edit.html
   participant P as routes/projects.js
-  participant R2 as R2 p-art-uploads
-  participant DB as D1
+  participant R2 as Cloudflare R2 (IMAGES)
+  participant DB as Cloudflare D1
 
-  U->>E: 칸 입력 · 사진 고르기
-  E-->>U: 오른쪽 미리보기 카드 즉시 변경 (서버 안 거침)
-  U->>E: 전시 시작하기
-  E->>E: 필수 칸·주소 형식 검사
-  E->>E: shrink(): 사진을 긴 쪽 1600px JPEG로 줄이기
-  E->>P: POST /api/projects (FormData: 글 + 사진 ≤5장)
-  P->>P: readForm(): 길이·주소 검사, 분야는 shared 목록만 남김
-  P->>P: pickImages(): 종류·크기·장수 검사
-  P->>DB: INSERT projects
-  P->>R2: 사진마다 무작위 키로 저장
-  P->>DB: INSERT images (키만)
-  P-->>E: { id }
-  E-->>U: /kit?id= 로 이동 (홍보 키트)
+  U->>E: 제목·소개·체험 주소 입력 & 사진 선택 & 팀원 닉네임 검색
+  E->>E: 오른쪽 미리보기 카드(#pvTitle 등) 실시간 갱신
+  E->>E: 0.5초 디바운스로 localStorage('part-draft:...') 자동 임시 저장
+  U->>E: "전시 시작하기" 클릭
+  E->>E: shrink(file): <canvas>로 긴 변 1600px 이하 · JPEG(82%) 압축
+  E->>P: POST /api/projects (FormData: 텍스트 + 압축 사진 ≤5장 + members)
+  P->>P: readForm(): 길이·http(s) 주소·허용 분야(CATS) 검증
+  P->>P: pickImages(): jpg/png/webp 종류·장당 1.5MB·최대 5장 검증
+  P->>DB: readMembers(): 실제 존재하는 회원인지 확인 (최대 5명)
+  P->>DB: INSERT INTO projects (...)
+  loop 사진 파일마다
+    P->>R2: IMAGES.put(UUID키, arrayBuffer, contentType)
+    P->>DB: INSERT INTO images (project_id, file)
+  end
+  P->>DB: saveMembers(): project_members 일괄 저장 (batch)
+  P-->>E: { id: 새 작품 번호 }
+  E->>E: dropDraft() (임시 저장본 삭제)
+  E-->>U: /kit.html?id=번호 (홍보 키트 화면으로 이동)
 ```
 
-- 사진은 R2에, DB에는 **키(이름)만** 있어요. 화면은 `/uploads/키`로 사진을 불러요 → Worker가 R2에서 꺼내 보내요.
-- 사진을 브라우저에서 줄이는 이유: R2 무료 한도(10GB)를 아끼고, 휴대폰 사진(5~10MB)도 빨리 올라가게.
+---
 
-### 3-3. ▲ 응원 · 💬 한 줄 감상
+### 3-3. ▲ 응원 · ☆ 북마크 · 💬 한 줄 감상 (도배 방지)
 
 ```mermaid
 sequenceDiagram
+  autonumber
   actor U as 사용자
-  participant APP as app.js (공통 클릭 처리)
+  participant J as app.js / project.html
   participant P as routes/projects.js
-  participant DB as D1
+  participant DB as Cloudflare D1
 
-  U->>APP: ▲ 클릭 (어느 페이지든 data-cheer 버튼)
-  APP->>P: POST /api/projects/:id/like
-  alt 로그인 안 됨
-    P-->>APP: 401
-    APP-->>U: 로그인 화면으로 (끝나면 돌아옴)
-  else 로그인 됨
-    P->>DB: 있으면 DELETE, 없으면 INSERT (켜기/끄기)
-    P-->>APP: { liked, likes }
-    APP-->>U: 같은 작품의 ▲ 숫자 모두 갱신
+  U->>J: ▲ 응원 버튼([data-cheer]) 또는 ☆ 북마크(#bm) 클릭
+  J->>P: POST /api/projects/:id/like (또는 /bookmark)
+  alt 비로그인 상태
+    P-->>J: 401 "로그인이 필요해요"
+    J-->>U: 토스트 안내 후 /login.html?next=원래주소 로 이동
+  else 로그인 상태
+    P->>DB: toggle(): DELETE FROM likes WHERE user_id=? AND project_id=?
+    alt 지워진 줄이 없음 (meta.changes === 0 → 새로 켜기)
+      P->>DB: INSERT INTO likes (user_id, project_id)
+    end
+    P->>DB: SELECT COUNT(*) FROM likes WHERE project_id=?
+    P-->>J: { liked: true/false, likes: 총개수 }
+    J-->>U: 화면의 모든 해당 작품 응원 숫자·버튼 색상 즉시 동기화
   end
 
-  U->>P: POST /api/projects/:id/comments {name, text}
-  P->>DB: 같은 IP 최근 1분 감상 수 확인
-  alt 5개 이상
-    P-->>U: 429 "조금 있다가"
-  else
-    P->>DB: INSERT comments
+  U->>J: 방명록에 이름(선택)·한 줄 감상(1~80자) 입력 후 "남기기"
+  J->>P: POST /api/projects/:id/comments { name, text }
+  P->>DB: 같은 IP(cf-connecting-ip)의 최근 1분 내 작성 수 조회
+  alt 1분 내 5개 이상
+    P-->>J: 429 "조금 있다가 다시 남겨 주세요"
+  else 5개 미만
+    P->>DB: INSERT INTO comments (project_id, name, text, ip)
+    P-->>J: { id } → 방명록 목록 새로고침
   end
-```
-
-### 3-4. 목록 (홈 · 전시관)
-
-```mermaid
-flowchart LR
-  Q["검색어 q · 분야 cat · 정렬 sort"] --> API["GET /api/projects?q=&cat=&sort="]
-  API --> SQL["SQL 한 번에<br/>검색 + 분야 + 정렬 + 작성자·사진·응원 수<br/>비공개는 주인만"]
-  SQL --> HOMEV["홈: 앞 6개만 + '전체 보기'"]
-  SQL --> WORKSV["전시관: 전부<br/>조건을 주소에 저장"]
-  HOMEV -- "조건 그대로 들고 이동" --> WORKSV
 ```
 
 ---
 
-## 4. DB 구조
+### 3-4. 카카오톡·SNS 공유 미리보기 (동적 Open Graph 치환)
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor BOT as 카카오톡·디스코드 봇 / 브라우저
+  participant OG as backend/src/og.js (projectPage)
+  participant AS as Static Assets (frontend/project.html)
+  participant DB as Cloudflare D1
+
+  BOT->>OG: GET /project.html?id=7 (또는 /project?id=7)
+  OG->>AS: ASSETS.fetch('/project')로 원본 HTML 가져오기
+  OG->>DB: findPublic(): id=7 작품이 공개(is_public=1)이고 안 숨겨졌는지(hidden=0) 조회
+  alt 공개 작품이 존재함
+    OG->>OG: HTMLRewriter로 <title>, og:title, og:description, og:image를 작품 정보로 치환
+    OG-->>BOT: 작품 전용 미리보기 메타 태그가 심어진 HTML 응답 (ETag 제거)
+  else 없거나 비공개·숨김 작품
+    OG-->>BOT: 기본 PART 전시관 미리보기 HTML 그대로 응답 (정보 유출 방지)
+  end
+```
+
+---
+
+### 3-5. 🚩 신고 3회 자동 숨김 & 관리자 검토
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor U as 일반 회원 (3명)
+  actor A as 관리자 (ADMIN_EMAILS)
+  participant PR as routes/projects.js
+  participant AD as routes/admin.js
+  participant DB as Cloudflare D1
+
+  U->>PR: POST /api/projects/:id/report { reason: "사유" }
+  PR->>DB: INSERT OR IGNORE INTO reports (project_id, user_id, reason)
+  PR->>DB: SELECT COUNT(*) n FROM reports WHERE project_id = ?
+  alt 누적 신고자 수 n >= 3 (HIDE_AT)
+    PR->>DB: UPDATE projects SET hidden = 1 WHERE id = ?
+    Note over DB: 전시관 목록·남의 상세 조회·OG 미리보기에서 즉시 가려짐<br/>(작품 주인과 관리자만 열람 가능)
+  end
+
+  A->>AD: GET /api/admin/reports (/admin.html 접속)
+  AD->>DB: 숨김 처리되었거나 신고가 있는 작품 + 사유 목록(group_concat) 조회
+  AD-->>A: 신고 건수 및 사유 목록 표시
+  A->>AD: POST /api/admin/projects/:id/hide { hidden: 0 } ("다시 보이기")
+  A->>AD: DELETE /api/admin/projects/:id/reports ("신고 지우기")
+  AD->>DB: hidden 상태 변경 및 reports 기록 삭제
+```
+
+---
+
+## 4. 데이터베이스 구조 (ERD · 전체 9개 테이블)
 
 ```mermaid
 erDiagram
-  users ||--o{ projects : "올린다"
-  users ||--o{ likes : "누른다"
-  projects ||--o{ images : "사진"
-  projects ||--o{ likes : "받는다"
-  projects ||--o{ comments : "감상"
-  projects ||--o{ project_members : "팀원"
-  users ||--o{ project_members : "참여"
-  users ||--o{ bookmarks : "담는다"
-  projects ||--o{ bookmarks : "담긴다"
-  users ||--o{ reports : "신고한다"
-  projects ||--o{ reports : "신고받는다"
+  users ||--o{ projects : "작성 (user_id)"
+  users ||--o{ sessions : "로그인 유지 (uid)"
+  users ||--o{ likes : "응원 (user_id)"
+  users ||--o{ bookmarks : "북마크 (user_id)"
+  users ||--o{ project_members : "팀원 참여 (user_id)"
+  users ||--o{ reports : "신고 (user_id)"
+
+  projects ||--o{ images : "사진 키 (project_id)"
+  projects ||--o{ likes : "응원 받음 (project_id)"
+  projects ||--o{ comments : "한 줄 감상 (project_id)"
+  projects ||--o{ project_members : "팀원 구성 (project_id)"
+  projects ||--o{ bookmarks : "북마크 됨 (project_id)"
+  projects ||--o{ reports : "신고 접수 (project_id)"
 
   users {
-    int id PK
-    text email UK "로그인 (소문자)"
-    text password "PBKDF2 암호"
-    text nickname
-    text bio
+    int id PK "회원 고유 번호"
+    text email UK "로그인 이메일 (소문자)"
+    text password "PBKDF2 해시 문자열"
+    text nickname "닉네임 (2~20자)"
+    text bio "소개글 (0~200자)"
+  }
+  sessions {
+    text sid PK "무작위 세션 쿠키 키 (UUIDx2)"
+    int uid FK "users.id (CASCADE)"
+    int expires "만료 시각 (밀리초)"
   }
   projects {
-    int id PK
-    int user_id FK
-    text title
-    text summary "한 줄 소개"
-    text detail "만든 이야기"
-    text url "체험 주소"
-    text github
-    text tags "기술, 쉼표 구분"
-    text cats "분야, 쉼표 구분"
-    text maker "만든 사람"
-    text target "추천 대상"
-    int is_public
-    int views "조회수 (0002)"
-    int hidden "신고로 숨김 (0002)"
-    text created_at
+    int id PK "작품 고유 번호"
+    int user_id FK "작성자 users.id (CASCADE)"
+    text title "작품 제목 (1~40자)"
+    text summary "한 줄 소개 (1~100자)"
+    text detail "만든 이야기 (0~2000자)"
+    text url "체험 주소 (http/https)"
+    text github "GitHub 주소"
+    text tags "쓴 기술 (쉼표 구분, 최대 8개)"
+    text cats "분야 (쉼표 구분, CATS 검증)"
+    text maker "만든 사람 표기 (0~30자)"
+    text target "추천 대상 (0~50자)"
+    int is_public "공개 여부 (1=공개, 0=비공개)"
+    int views "조회수 (주인 외 열람 시 +1)"
+    int hidden "숨김 여부 (3회 신고/관리자=1)"
+    text created_at "등록 시각 (UTC)"
   }
   images {
     int id PK
-    int project_id FK
-    text file "R2에 저장된 사진 키"
+    int project_id FK "projects.id (CASCADE)"
+    text file "R2 객체 키 (UUID)"
   }
   likes {
-    int user_id PK
-    int project_id PK
+    int user_id PK "users.id (CASCADE)"
+    int project_id PK "projects.id (CASCADE)"
   }
   comments {
     int id PK
-    int project_id FK
-    text name
-    text text
-    text ip "도배 방지"
-    text created_at
+    int project_id FK "projects.id (CASCADE)"
+    text name "작성자 이름 (기본 익명, ≤12자)"
+    text text "감상 내용 (1~80자)"
+    text ip "도배 방지용 IP"
+    text created_at "작성 시각 (UTC)"
   }
   project_members {
-    int project_id PK
-    int user_id PK
+    int project_id PK "projects.id (CASCADE)"
+    int user_id PK "users.id (CASCADE)"
   }
   bookmarks {
-    int user_id PK
-    int project_id PK
+    int user_id PK "users.id (CASCADE)"
+    int project_id PK "projects.id (CASCADE)"
   }
   reports {
     int id PK
-    int project_id FK
-    int user_id FK
-    text reason "1~100자"
-    text created_at
+    int project_id FK "projects.id (CASCADE)"
+    int user_id FK "users.id (CASCADE)"
+    text reason "신고 사유 (1~100자, UNIQUE(project_id,user_id))"
+    text created_at "신고 시각 (UTC)"
   }
 ```
 
-- 사용자를 지우면 작품·응원이, 작품을 지우면 사진·응원·감상·팀원·북마크·신고가 **함께 지워져요**(`ON DELETE CASCADE`).
-- 신고(`reports`)는 한 사람이 한 작품에 한 번만(UNIQUE). 서로 다른 3명이 신고하면 `projects.hidden = 1`이 돼요.
-- 로그인 세션은 `sessions` 표(sid, uid, expires)에 있어요.
-- 표 구조는 `backend/migrations/0001_init.sql` + `0002_features.sql`(팀원·북마크·신고·조회수). 바꿀 땐 **새 파일**(`0003_….sql`)을 추가해요 → 배포할 때 자동 적용.
-
 ---
 
-## 5. 개발 → 배포 흐름
+## 5. 개발 · 테스트 · CI/CD 자동 배포 파이프라인
 
 ```mermaid
 flowchart LR
-  subgraph LOCAL["💻 내 컴퓨터"]
-    BR["feature/fe-… 또는<br/>feature/be-… 브랜치"] --> CODE["코드 수정<br/>npm run dev (로컬 D1·R2)"] --> T["npm test"]
+  subgraph LOCAL["💻 내 컴퓨터 (로컬 개발)"]
+    BR["기능/문서 브랜치 생성"] --> DEV_RUN["코드 수정 & 확인<br/>npm run dev (로컬 D1·R2)"]
+    DEV_RUN --> CHECK["npm run check & npm test<br/>(59개 시나리오 자동 검증)"]
   end
-  T -- push --> PR["Pull Request → dev"]
-  PR --> CI{"GitHub Actions CI<br/>문법 검사 + 테스트 59개"}
-  CI -- 실패 --> CODE
-  CI -- 통과 + 라벨 자동 --> DEV["dev 브랜치<br/>(통합)"]
-  DEV -- "발표·배포할 때 PR" --> MAIN["main 브랜치<br/>(배포용)"]
-  MAIN -- "Deploy 워크플로" --> CFD["☁️ Cloudflare<br/>DB 표 업데이트 → 배포"]
-  CFD --> LIVE["🌐 p-art.swx2.workers.dev"]
+
+  CHECK -- "git push" --> PR["GitHub Pull Request"]
+  PR --> CI{"GitHub Actions CI<br/>문법 검사 + 스모크 테스트 59개"}
+  CI -- "실패" --> DEV_RUN
+  CI -- "성공 (All checks passed)" --> MERGE_DEV["dev 브랜치 병합<br/>(팀 통합 브랜치)"]
+  MERGE_DEV -- "릴리스 PR 병합" --> MERGE_MAIN["main 브랜치 병합<br/>(배포 브랜치)"]
+  MERGE_MAIN -- "Deploy 워크플로 자동 실행" --> DEPLOY["☁️ Cloudflare 배포<br/>D1 마이그레이션 적용 → Worker & Assets 배포"]
+  DEPLOY --> LIVE["🌐 https://p-art.swx2.workers.dev"]
 ```
-
-- `npm run dev`는 **내 컴퓨터 안에 가짜 D1·R2**를 만들어서 돌려요. 실제 사이트 데이터는 건드리지 않아요.
-
-브랜치 규칙은 [CONTRIBUTING.md](../CONTRIBUTING.md), 배포 방법은 [DEPLOY.md](DEPLOY.md)에 있어요.
 
 ---
 
-## 6. 무엇을 바꾸려면 어디를?
+## 6. 무엇을 바꾸려면 어느 파일을 고치나요? (빠른 길찾기 표)
 
-| 하고 싶은 것 | 고칠 곳 | 담당 |
-|---|---|---|
-| 화면 문구·배치 | `frontend/*.html` | FE |
-| 색 · 글꼴 | `frontend/style.css` 맨 위 변수 (`--accent` 등) | FE |
-| 카드 모양 (모든 페이지 공통) | `frontend/js/app.js`의 `card()` | FE |
-| 홈에 보이는 작품 수 | `frontend/index.html`의 `HOME_LIMIT` | FE |
-| 홍보 문구 | `frontend/kit.html`의 `promos()` | FE |
-| 분야 추가·변경 | `shared/categories.json` **한 곳만** | 공용 |
-| 입력 규칙(길이 등) | `backend/src/routes/*.js` + 화면 쪽 검사도 같이 | BE+FE |
-| 새 API | `backend/src/routes/`에 추가 → `index.js`에서 `app.route` → API 표 갱신 | BE |
-| 사진 크기·장수 | 화면 `edit.html`의 `shrink()` + 서버 `projects.js`의 `MAX_BYTES`·`MAX_FILES` | FE+BE |
-| Worker가 먼저 처리할 주소 | `wrangler.jsonc`의 `run_worker_first` | BE |
-| 테이블 구조 | `backend/migrations/`에 새 `000N_….sql` 추가 | BE |
+| 바꾸고 싶은 것 | 고칠 파일 | 담당 |
+| :--- | :--- | :--- |
+| 화면 문구 · 배치 · 레이아웃 구조 | `frontend/*.html` | FE |
+| 색상 테마 · 폰트 · 카드/버튼 디자인 | `frontend/style.css` (`:root`, `:root.light` 변수 등) | FE |
+| 모든 페이지 공통 상단 메뉴 · 카드 모양 · 응원 클릭 동작 | `frontend/js/app.js` (`nav()`, `card()`, `filters()`, `stepForm()`) | FE |
+| 홈 화면에 보이는 최대 작품 개수 | `frontend/index.html` (`HOME_LIMIT = 6`) | FE |
+| 작품 등록 직후 나오는 홍보 문구 템플릿 | `frontend/kit.html` (`promos()`) | FE |
+| 업로드 전 사진 리사이즈 해상도·품질 | `frontend/edit.html` (`shrink(file, 1600)`) | FE |
+| 작품 분야(카테고리) 추가·변경 | `shared/categories.json` (**이 파일 한 곳만 고치면 서버·화면 모두 자동 반영!**) | 공용 |
+| 카톡·SNS 공유 미리보기(Open Graph) 제목·이미지 규칙 | `backend/src/og.js` (`projectPage()`) | BE |
+| 관리자 이메일 지정 | `wrangler.jsonc`의 `vars.ADMIN_EMAILS` (쉼표로 구분) | BE |
+| 입력 글자 수 제한 · 검색/필터 SQL · 자동 숨김 신고 횟수(`HIDE_AT`) | `backend/src/routes/projects.js`, `backend/src/routes/auth.js` | BE |
+| 데이터베이스 표·열 추가 | `backend/migrations/`에 새 `0003_....sql` 파일 추가 | BE |
+| 자동화 테스트 시나리오 추가 | `scripts/smoke-test.js` (`npm test`) | 공용 |
