@@ -10,7 +10,7 @@
 import { Hono } from 'hono';
 import { hashPassword, checkPassword } from '../password.js';
 import { startSession, endSession, needLogin } from '../session.js';
-import { bad, readJson, isAdminEmail } from '../util.js';
+import { bad, readJson, isAdminEmail, deleteUser } from '../util.js';
 
 // [뜻/역할] 회원 API 전용 Hono 라우터 객체를 만들어요.
 // [문법] `new Hono()`로 하위 라우터를 생성해요.
@@ -24,11 +24,24 @@ const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const cleanEmail = (e) => String(e || '').trim().toLowerCase();
 
 // [뜻/역할] 회원 번호(`id`)로 내 정보를 조회하되, 비밀번호 해시(`password`) 열은 빼고 안전한 열만 골라 가져와 관리자 여부(`isAdmin`)를 붙여 돌려줘요.
-// [문법] `SELECT id, email, nickname, bio FROM users WHERE id = ?`로 조회한 뒤 스프레드 연산자(`...u`)로 `isAdmin` 불리언 값을 추가해요.
+// [문법] `SELECT ... FROM users WHERE id = ?`로 조회한 뒤, 구조 분해(`{ student_no, real_name, ...rest }`)로 DB 열 이름을 화면용 이름(`studentNo`, `name`)으로 바꾸고 `isAdmin` 값을 더해요.
 // [작성 이유] 응답 JSON에 암호화된 비밀번호 해시가 절대 섞여 나가지 않게 하고, 프론트엔드 상단 메뉴에서 관리자에게만 '관리' 링크를 보여 주기 위해서예요.
 const me = async (c, id) => {
-  const u = await c.env.DB.prepare('SELECT id, email, nickname, bio FROM users WHERE id = ?').bind(id).first();
-  return u && { ...u, isAdmin: isAdminEmail(c, u.email) };
+  const u = await c.env.DB.prepare('SELECT id, email, nickname, bio, student_no, real_name FROM users WHERE id = ?').bind(id).first();
+  if (!u) return null;
+  const { student_no, real_name, ...rest } = u;
+  return { ...rest, studentNo: student_no, name: real_name, isAdmin: isAdminEmail(c, u.email) };
+};
+
+// [뜻/역할] 가입과 내 정보 수정에서 공통으로 쓰는 학번·이름 검사 함수예요.
+// [문법] 학번은 정규식 `/^\d{4,10}$/`(숫자만 4~10자리), 이름은 앞뒤 공백을 뺀 길이 2~20자를 검사해요. 틀리면 `bad(...)`(400 에러)를 던져요.
+// [작성 이유] 화면 검사는 우회할 수 있어서 서버에서 다시 막아요. 학번 자릿수는 학교마다 달라서(예: 10101 = 1학년 1반 1번) 범위를 넉넉히 잡았어요.
+const cleanStudent = (body) => {
+  const studentNo = String(body.studentNo || '').trim();
+  const name = String(body.name || '').trim();
+  if (!/^\d{4,10}$/.test(studentNo)) throw bad('학번은 숫자 4~10자리로 적어 주세요');
+  if (name.length < 2 || name.length > 20) throw bad('이름은 2~20자로 적어 주세요');
+  return { studentNo, name };
 };
 
 // [뜻/역할] 회원가입과 프로필 수정에서 공통으로 쓰는 닉네임 길이(2~20자) 검사 함수예요.
@@ -52,9 +65,11 @@ auth.post('/signup', async (c) => {
   if (!EMAIL.test(email) || email.length > 100) throw bad('이메일 주소를 확인해 주세요');
   if (!/^(?=.*[A-Za-z])(?=.*\d).{8,}$/.test(password)) throw bad('비밀번호는 8자 이상, 영문+숫자가 필요해요');
   const nickname = cleanNickname(body);
+  const { studentNo, name } = cleanStudent(body);
   if (await c.env.DB.prepare('SELECT 1 FROM users WHERE email = ?').bind(email).first()) throw bad('이미 가입한 이메일이에요', 409);
-  const { meta } = await c.env.DB.prepare('INSERT INTO users (email, password, nickname) VALUES (?, ?, ?)')
-    .bind(email, await hashPassword(password), nickname).run();
+  // 승인 단계 없이 바로 회원이 돼요. 바로 아래 startSession으로 로그인까지 해요.
+  const { meta } = await c.env.DB.prepare("INSERT INTO users (email, password, nickname, student_no, real_name, created_at) VALUES (?, ?, ?, ?, ?, datetime('now'))")
+    .bind(email, await hashPassword(password), nickname, studentNo, name).run();
   await startSession(c, meta.last_row_id);
   return c.json(await me(c, meta.last_row_id));
 });
@@ -88,8 +103,15 @@ auth.get('/me', async (c) => c.json(c.get('uid') ? await me(c, c.get('uid')) : n
 // [작성 이유] 본인(`c.get('uid')`)의 프로필만 안전하게 수정하고, 수정된 최신 내 정보를 바로 돌려주기 위해서예요.
 auth.put('/me', needLogin, async (c) => {
   const body = await readJson(c);
-  await c.env.DB.prepare('UPDATE users SET nickname = ?, bio = ? WHERE id = ?')
-    .bind(cleanNickname(body), String(body.bio || '').slice(0, 200), c.get('uid')).run();
+  const nickname = cleanNickname(body), bio = String(body.bio || '').slice(0, 200);
+  // 학번·이름을 보내지 않으면(예전 화면·다른 도구) 닉네임·소개만 고치고 학번·이름은 그대로 둬요.
+  if (body.studentNo === undefined && body.name === undefined) {
+    await c.env.DB.prepare('UPDATE users SET nickname = ?, bio = ? WHERE id = ?').bind(nickname, bio, c.get('uid')).run();
+  } else {
+    const { studentNo, name } = cleanStudent(body);
+    await c.env.DB.prepare('UPDATE users SET nickname = ?, bio = ?, student_no = ?, real_name = ? WHERE id = ?')
+      .bind(nickname, bio, studentNo, name, c.get('uid')).run();
+  }
   return c.json(await me(c, c.get('uid')));
 });
 
@@ -99,10 +121,7 @@ auth.put('/me', needLogin, async (c) => {
 // - 그다음 `DELETE FROM users WHERE id = ?`를 실행하고 `endSession(c)`로 쿠키를 지워요.
 // [작성 이유] DB의 작품·응원·북마크·세션 기록은 외래키의 `ON DELETE CASCADE` 덕분에 `users` 줄만 지워도 자동으로 함께 사라지지만, 외부 저장소인 R2 버킷의 사진 파일은 직접 지워 줘야 용량 낭비와 찌꺼기 파일이 남지 않기 때문이에요.
 auth.delete('/me', needLogin, async (c) => {
-  const uid = c.get('uid');
-  const { results } = await c.env.DB.prepare('SELECT i.file FROM images i JOIN projects p ON p.id = i.project_id WHERE p.user_id = ?').bind(uid).all();
-  if (results.length) await c.env.IMAGES.delete(results.map((i) => i.file));
-  await c.env.DB.prepare('DELETE FROM users WHERE id = ?').bind(uid).run();
+  await deleteUser(c, c.get('uid'));
   await endSession(c);
   return c.json({ ok: true });
 });

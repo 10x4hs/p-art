@@ -42,7 +42,7 @@ flowchart LR
       PR["routes/projects.js<br/>작품 CRUD · 응원 · 북마크 · 감상 · 신고"]
       AD["routes/admin.js<br/>신고 목록 · 숨김/복구 · 신고 삭제"]
     end
-    D1[("D1 Database (SQLite)<br/>9개 테이블 (0001 + 0002)")]
+    D1[("D1 Database (SQLite)<br/>9개 테이블 (0001 + 0002 + 0003)")]
     R2[("R2 Bucket (p-art-uploads)<br/>작품 사진 원본 파일")]
   end
 
@@ -116,7 +116,7 @@ sequenceDiagram
     F-->>U: stepForm.goTo(0) → 1단계(이메일 칸)로 자동 복귀
   else 신규 이메일
     A->>P: hashPassword(password) (16B 무작위 소금 + PBKDF2 100,000회)
-    A->>DB: INSERT INTO users (email, password, nickname)
+    A->>DB: INSERT INTO users (email, password, nickname, student_no, real_name, created_at)
     A->>P: startSession(c, uid)
     P->>DB: batch: 만료 세션 DELETE + 새 sid(30일) INSERT
     P-->>F: Set-Cookie: sid=...; HttpOnly; SameSite=Lax + 내 정보 JSON
@@ -273,6 +273,9 @@ erDiagram
     text password "PBKDF2 해시 문자열"
     text nickname "닉네임 (2~20자)"
     text bio "소개글 (0~200자)"
+    text student_no "학번 (숫자 4~10자리, 본인·관리자만)"
+    text real_name "이름 (2~20자, 본인·관리자만)"
+    text created_at "가입일"
   }
   sessions {
     text sid PK "무작위 세션 쿠키 키 (UUIDx2)"

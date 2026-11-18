@@ -1,6 +1,7 @@
 <!doctype html>
 <!-- ==========================================================================
-  [파일 개요] 관리자 전용 신고 검토 페이지(`/admin.html`)예요.
+  [파일 개요] 관리자 전용 페이지(`/admin.html`)예요. 위에 숫자 요약, 아래에 [회원]·[신고] 두 탭이 있어요.
+  - 회원 탭: 학번·이름·닉네임·이메일로 회원을 찾고, 필요하면 내보내요(관리자 계정은 못 내보내요).
   - 관리자(`me.isAdmin === true`)만 접근할 수 있으며, 신고가 접수되었거나 숨김 처리된 작품들의
     신고 건수·사유 목록을 확인하고 '숨기기 / 다시 보이기' 또는 '신고 지우기'를 처리해요.
   [비유] 전시관 관리자가 신고 접수함을 열어 보고 조치하는 운영 데스크예요.
@@ -28,18 +29,63 @@
 <body class="sr">
 <div id="nav"></div>
 <main class="wrap page-top">
-  <div class="sec-head" style="margin-bottom:34px"><div><p class="mono">Admin</p><h1 class="h2">신고 <b>살펴보기</b></h1></div></div>
-  <div class="reps" id="list"></div>
+  <div class="sec-head" style="margin-bottom:28px"><div><p class="mono">Admin</p><h1 class="h2">전시관 <b>관리</b></h1></div></div>
+  <div id="gate">
+    <div class="stats" id="sum" aria-label="전체 현황"></div>
+    <!-- [뜻/역할] 탭 버튼이에요. 고른 탭은 주소 끝(#users, #reports)에 남아서 새로 고쳐도 그대로예요. -->
+    <div class="adm-bar">
+      <div class="seg glass" role="group" aria-label="보기">
+        <button type="button" data-tab="users" aria-pressed="true">회원</button>
+        <button type="button" data-tab="reports" aria-pressed="false">신고</button>
+      </div>
+      <form class="search glass" id="qf" role="search">
+        <label class="vh" for="q">회원 찾기</label>
+        <input id="q" type="search" placeholder="학번·이름·닉네임·이메일" autocomplete="off">
+      </form>
+    </div>
+    <section id="users" aria-label="회원 목록"></section>
+    <section id="reports" class="reps" aria-label="신고 목록" hidden></section>
+  </div>
 </main>
 <div id="foot"></div>
 
 <script src="/js/app.js"></script>
 <script>
-// [뜻/역할] 서버에서 신고된 작품 목록(`GET /api/admin/reports`)을 받아 와 카드 형태(`.rep`)로 그려요.
-// [문법] 현재 숨겨진 작품(`r.hidden === 1`)이면 `'다시 보이기'`(`data-to="0"`) 버튼을, 보이는 작품이면 `'숨기기'`(`data-to="1"`) 버튼을 표시해요.
-async function load() {
+// [뜻/역할] 위쪽 숫자 카드 4개(회원·작품·신고 걸린 작품·숨긴 작품)를 그려요.
+async function loadSum() {
+  const s = await api('/api/admin/summary');
+  $('#sum').innerHTML = [['회원', s.users], ['작품', s.projects], ['신고 걸린 작품', s.reported], ['숨긴 작품', s.hidden]]
+    .map(([k, v]) => `<div class="glass"><b>${v}</b><span>${k}</span></div>`).join('');
+}
+
+// [뜻/역할] 회원 표를 그려요. 학번·이름이 빈 칸이면(이 기능 전에 가입한 회원) '미입력'으로 보여요.
+// [작성 이유] 표(.tbl)를 쓰면 학번 순서로 눈으로 훑기 쉬워요. 폰처럼 좁은 화면에서는 표가 옆으로 밀려요(.tbl의 overflow-x).
+// [작성 이유] 빨리 치면 요청이 여러 개 겹쳐요. 번호표(seq)를 붙여 가장 마지막 요청의 답만 그려서, 늦게 온 옛 답이 새 결과를 덮지 않게 해요.
+let seq = 0;
+async function loadUsers() {
+  const q = $('#q').value.trim(), my = ++seq;
+  const rows = await api('/api/admin/users' + (q ? '?q=' + encodeURIComponent(q) : ''));
+  if (my !== seq) return;
+  const none = '<span class="adm-none">미입력</span>';
+  $('#users').innerHTML = rows.length ? `<div class="tbl adm-tbl glass"><table>
+    <caption class="vh">회원 ${rows.length}명</caption>
+    <thead><tr><th scope="col">학번</th><th scope="col">이름</th><th scope="col">닉네임</th><th scope="col">이메일</th><th scope="col" class="num">작품</th><th scope="col">가입일</th><th scope="col" class="num"><span class="vh">관리</span></th></tr></thead>
+    <tbody>${rows.map((u) => `<tr>
+      <td>${u.studentNo ? esc(u.studentNo) : none}</td>
+      <td>${u.name ? esc(u.name) : none}</td>
+      <td><a href="/profile.html?id=${u.id}">${esc(u.nickname)}</a>${u.isAdmin ? ' <span class="adm-tag">관리자</span>' : ''}</td>
+      <td>${esc(u.email)}</td>
+      <td class="num">${u.projects}</td>
+      <td>${u.created_at ? esc(u.created_at.slice(0, 10)) : '—'}</td>
+      <td class="num">${u.isAdmin ? '' : `<button class="btn btn-danger adm-kick" type="button" data-kick="${u.id}" data-who="${esc(u.nickname)}">내보내기</button>`}</td>
+    </tr>`).join('')}</tbody></table></div>`
+    : `<div class="empty glass"><p>${q ? `'${esc(q)}'에 맞는 회원이 없어요.` : '아직 회원이 없어요.'}</p></div>`;
+}
+
+// [뜻/역할] 신고 목록을 그려요. 숨긴 작품은 '다시 보이기', 아니면 '숨기기' 버튼이 보여요.
+async function loadReports() {
   const rows = await api('/api/admin/reports');
-  $('#list').innerHTML = rows.length ? rows.map((r) => `<article class="rep glass">
+  $('#reports').innerHTML = rows.length ? rows.map((r) => `<article class="rep glass">
       <div class="row"><span>${r.hidden ? '숨김 처리됨' : '보이는 중'} · 신고 ${r.reports}건</span><span>by ${esc(r.author)}</span></div>
       <h2 class="rep-t"><a href="/project.html?id=${r.id}">${esc(r.title)}</a></h2>
       ${r.reasons.length ? `<ul class="rep-why">${r.reasons.map((w) => `<li>${esc(w)}</li>`).join('')}</ul>` : ''}
@@ -50,23 +96,45 @@ async function load() {
     : '<div class="empty glass"><p>살펴볼 신고가 없어요.</p></div>';
 }
 
-// [뜻/역할] '숨기기/다시 보이기'(`[data-hide]`)와 '신고 지우기'(`[data-clear]`) 버튼 클릭을 받아 처리한 뒤 목록을 새로 고쳐요.
-$('#list').addEventListener('click', async (e) => {
+// [뜻/역할] 탭을 바꿔요. 검색창은 회원 탭에서만 보여요.
+function tab(name) {
+  $$('[data-tab]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.tab === name)));
+  $('#users').hidden = name !== 'users';
+  $('#reports').hidden = name !== 'reports';
+  $('#qf').hidden = name !== 'users';
+  history.replaceState(null, '', '#' + name);
+  (name === 'users' ? loadUsers : loadReports)().catch((err) => toast(err.message));
+}
+$$('[data-tab]').forEach((b) => b.addEventListener('click', () => tab(b.dataset.tab)));
+
+// [뜻/역할] 글자를 칠 때마다 바로 찾되, 0.25초 동안 더 안 치면 그때 한 번만 서버에 물어봐요(디바운스).
+let timer;
+$('#q').addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(() => loadUsers().catch((err) => toast(err.message)), 250); });
+$('#qf').addEventListener('submit', (e) => { e.preventDefault(); loadUsers().catch((err) => toast(err.message)); });
+
+$('#users').addEventListener('click', async (e) => {
+  const k = e.target.closest('[data-kick]');
+  if (!k || !confirm(`${k.dataset.who} 님을 내보낼까요? 이 회원의 작품·사진·응원이 모두 지워지고 되돌릴 수 없어요.`)) return;
+  try { await api(`/api/admin/users/${k.dataset.kick}`, 'DELETE'); toast('내보냈어요'); await Promise.all([loadUsers(), loadSum()]); }
+  catch (err) { toast(err.message); }
+});
+
+$('#reports').addEventListener('click', async (e) => {
   const h = e.target.closest('[data-hide]'), x = e.target.closest('[data-clear]');
   try {
     if (h) { await api(`/api/admin/projects/${h.dataset.hide}/hide`, 'POST', { hidden: Number(h.dataset.to) }); toast(h.dataset.to === '1' ? '숨겼어요' : '다시 보이게 했어요'); }
     else if (x && confirm('이 작품의 신고를 모두 지울까요?')) { await api(`/api/admin/projects/${x.dataset.clear}/reports`, 'DELETE'); toast('신고를 지웠어요'); }
     else return;
-    load();
+    await Promise.all([loadReports(), loadSum()]);
   } catch (err) { toast(err.message); }
 });
 
-// [뜻/역할] 페이지 진입 시 로그인 여부와 관리자 권한(`me.isAdmin`)을 먼저 확인하고, 관리자가 아니면 안내 상자를 보여 줘요.
 (async () => {
   const me = await nav();
   if (!me) return toLogin();
-  if (!me.isAdmin) return ($('#list').innerHTML = notFound('관리자만 볼 수 있어요.'));
-  load();
+  if (!me.isAdmin) return ($('#gate').innerHTML = notFound('관리자만 볼 수 있어요.'));
+  loadSum().catch((err) => toast(err.message));
+  tab(location.hash === '#reports' ? 'reports' : 'users');
 })();
 </script>
 </body>

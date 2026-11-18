@@ -99,11 +99,22 @@ async function main() {
   check('사이트 미리보기 iframe(project.html)', html[2].includes('sandbox="allow-scripts allow-forms allow-same-origin allow-popups"'));
 
   // ── 2. 회원가입 · 로그인 · 비밀번호 검증 (5개 항목) ──
-  let r = await call('POST', '/api/signup', { email: 'Smoke@Test.com', password: 'abcd1234', nickname: '테스터' });
+  let r = await call('POST', '/api/signup', { studentNo: '10101', name: '홍길동', email: 'Smoke@Test.com', password: 'abcd1234', nickname: '테스터' });
   check('가입 + 이메일 소문자 저장', r.status === 200 && r.data.email === 'smoke@test.com');
   const aid = r.data.id;
-  check('같은 이메일 거절', (await call('POST', '/api/signup', { email: 'smoke@test.com', password: 'abcd1234', nickname: 'xx' })).status === 409);
-  check('약한 비밀번호 거절', (await call('POST', '/api/signup', { email: 'a@b.co', password: 'short', nickname: 'xx' })).status === 400);
+  check('같은 이메일 거절', (await call('POST', '/api/signup', { studentNo: '10101', name: '홍길동', email: 'smoke@test.com', password: 'abcd1234', nickname: 'xx' })).status === 409);
+  check('약한 비밀번호 거절', (await call('POST', '/api/signup', { studentNo: '10101', name: '홍길동', email: 'a@b.co', password: 'short', nickname: 'xx' })).status === 400);
+  check('학번 없으면 가입 거절', (await call('POST', '/api/signup', { name: '홍길동', email: 'n1@b.co', password: 'abcd1234', nickname: 'xx' })).status === 400);
+  check('이름 없으면 가입 거절', (await call('POST', '/api/signup', { studentNo: '10101', email: 'n2@b.co', password: 'abcd1234', nickname: 'xx' })).status === 400);
+  r = await call('GET', '/api/me');
+  check('가입 즉시 로그인 + 학번·이름 저장', r.data.id === aid && r.data.studentNo === '10101' && r.data.name === '홍길동');
+  const pub = (await call('GET', `/api/users/${aid}`)).data;
+  check('공개 프로필엔 학번·이름이 없음', ['studentNo', 'student_no', 'name', 'real_name'].every((k) => !(k in pub)));
+  r = await call('PUT', '/api/me', { nickname: '테스터', bio: '' });
+  check('학번·이름 없이 닉네임만 고쳐도 됨(예전 회원)', r.status === 200 && r.data.studentNo === '10101');
+  r = await call('PUT', '/api/me', { nickname: '테스터', bio: '', studentNo: '20203', name: '홍길순' });
+  check('내 정보에서 학번·이름 고치기', r.status === 200 && r.data.studentNo === '20203' && r.data.name === '홍길순');
+  check('잘못된 학번 거절', (await call('PUT', '/api/me', { nickname: '테스터', studentNo: '2학년', name: '홍길순' })).status === 400);
   await call('POST', '/api/logout');
   check('틀린 비밀번호 거절', (await call('POST', '/api/login', { email: 'smoke@test.com', password: 'wrong999' })).status === 401);
   check('로그인', (await call('POST', '/api/login', { email: 'SMOKE@test.com', password: 'abcd1234' })).status === 200);
@@ -126,7 +137,7 @@ async function main() {
   check('로그아웃 상태 응원 거절', (await call('POST', `/api/projects/${id}/like`)).status === 401);
   check('로그인 없이 감상 남기기', (await call('POST', `/api/projects/${id}/comments`, { name: '친구', text: '좋아요' })).status === 200);
   check('빈 감상 거절', (await call('POST', `/api/projects/${id}/comments`, { text: '' })).status === 400);
-  check('두 번째 사용자 가입', (await call('POST', '/api/signup', { email: 'other@test.com', password: 'abcd1234', nickname: '다른친구' })).status === 200);
+  check('두 번째 사용자 가입', (await call('POST', '/api/signup', { studentNo: '10101', name: '홍길동', email: 'other@test.com', password: 'abcd1234', nickname: '다른친구' })).status === 200);
   check('남의 작품 삭제 거절', (await call('DELETE', `/api/projects/${id}`)).status === 403);
   who = 'a';
 
@@ -178,7 +189,7 @@ async function main() {
   check('내 작품은 신고 불가', (await call('POST', `/api/projects/${id}/report`, { reason: '테스트' })).status === 400);
   for (const n of ['c', 'd']) {
     who = n;
-    await call('POST', '/api/signup', { email: `${n}@test.com`, password: 'abcd1234', nickname: '신고자' + n });
+    await call('POST', '/api/signup', { studentNo: '10101', name: '홍길동', email: `${n}@test.com`, password: 'abcd1234', nickname: '신고자' + n });
     await call('POST', `/api/projects/${id}/report`, { reason: '이상해요 ' + n });
   }
   who = 'guest';
@@ -194,7 +205,7 @@ async function main() {
   check('일반 회원은 isAdmin false', (await call('GET', '/api/me')).data.isAdmin === false);
   check('일반 회원은 관리 API 거절', (await call('GET', '/api/admin/reports')).status === 403);
   who = 'boss';
-  r = await call('POST', '/api/signup', { email: ADMIN, password: 'abcd1234', nickname: '관리자' });
+  r = await call('POST', '/api/signup', { studentNo: '10101', name: '홍길동', email: ADMIN, password: 'abcd1234', nickname: '관리자' });
   check('관리자 이메일은 isAdmin true', r.data.isAdmin === true && (await call('GET', '/api/me')).data.isAdmin === true);
   r = await call('GET', '/api/admin/reports');
   const rep = r.data.find((x) => x.id === id);
@@ -203,6 +214,22 @@ async function main() {
   check('잘못된 숨김 값 거절', (await call('POST', `/api/admin/projects/${id}/hide`, { hidden: 2 })).status === 400);
   check('관리자가 숨김 풀기', (await call('POST', `/api/admin/projects/${id}/hide`, { hidden: 0 })).status === 200);
   check('신고 지우기', (await call('DELETE', `/api/admin/projects/${id}/reports`)).status === 200 && !(await call('GET', '/api/admin/reports')).data.length);
+  r = await call('GET', '/api/admin/summary');
+  check('관리 요약(회원·작품·신고 수)', r.status === 200 && r.data.users === 5 && r.data.projects >= 1 && r.data.reported === 0);
+  r = await call('GET', '/api/admin/users');
+  const ua = r.data.find((u) => u.id === aid);
+  check('회원 목록(학번·이름·이메일·작품 수)', r.status === 200 && ua.studentNo === '20203' && ua.name === '홍길순' && ua.email === 'smoke@test.com' && ua.projects >= 1);
+  r = await call('GET', '/api/admin/users?q=' + encodeURIComponent('홍길순'));
+  check('회원 검색(이름)', r.data.length === 1 && r.data[0].id === aid);
+  check('회원 검색(학번)', (await call('GET', '/api/admin/users?q=20203')).data.length === 1);
+  check('검색어의 % · _ 는 글자 그대로', !(await call('GET', '/api/admin/users?q=%25')).data.length && !(await call('GET', '/api/admin/users?q=_')).data.length);
+  const boss = (await call('GET', '/api/me')).data.id;
+  check('관리자는 관리자를 내보낼 수 없음', (await call('DELETE', `/api/admin/users/${boss}`)).status === 400);
+  const victim = (await call('GET', '/api/admin/users?q=' + encodeURIComponent('신고자c'))).data[0].id;
+  check('관리자가 회원 내보내기', (await call('DELETE', `/api/admin/users/${victim}`)).status === 200 && !(await call('GET', '/api/admin/users?q=' + encodeURIComponent('신고자c'))).data.length);
+  check('없는 회원 내보내기 404', (await call('DELETE', '/api/admin/users/99999')).status === 404);
+  who = 'b';
+  check('일반 회원은 회원 목록 거절', (await call('GET', '/api/admin/users')).status === 403);
   who = 'guest';
   check('숨김을 풀면 다시 보임', (await call('GET', `/api/projects/${id}`)).status === 200);
   who = 'a';
