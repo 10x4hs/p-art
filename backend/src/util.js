@@ -46,3 +46,13 @@ export async function isAdmin(c) {
   const u = await c.env.DB.prepare('SELECT email FROM users WHERE id = ?').bind(c.get('uid')).first();
   return !!u && isAdminEmail(c, u.email);
 }
+
+// [뜻/역할] 회원 한 명을 지워요. 본인 탈퇴(`DELETE /api/me`)와 관리자 내보내기(`DELETE /api/admin/users/:id`)가 같이 써요.
+// [문법] 먼저 지울 사진 키를 모아 두고, users 줄을 지운 다음(작품·응원·세션은 CASCADE로 같이 지워져요), R2 사진을 1,000개씩 나눠 지워요.
+// [작성 이유] R2는 한 번에 1,000개까지만 지울 수 있어요. DB를 먼저 지워서, 사진 지우기가 실패해도 "회원은 남았는데 사진만 깨진" 상태가 생기지 않게 해요.
+export async function deleteUser(c, uid) {
+  const { results } = await c.env.DB.prepare('SELECT i.file FROM images i JOIN projects p ON p.id = i.project_id WHERE p.user_id = ?').bind(uid).all();
+  await c.env.DB.prepare('DELETE FROM users WHERE id = ?').bind(uid).run();
+  const keys = results.map((i) => i.file);
+  for (let i = 0; i < keys.length; i += 1000) await c.env.IMAGES.delete(keys.slice(i, i + 1000));
+}
