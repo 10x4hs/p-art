@@ -58,6 +58,8 @@ const head = (en, ko) => `<div class="sec-head" style="margin:72px 0 34px"><div>
       <p class="mono">My page · 내 정보</p>
       <div class="row"><span>로그인 이메일</span><span>${esc(me.email)}</span></div>
       <div class="f"><label for="p-nick">닉네임</label><input class="field-in" id="p-nick" name="nickname" value="${esc(u.nickname)}" maxlength="20"></div>
+      <div class="f"><label for="p-no">학번 <small>관리자만 볼 수 있어요</small></label><input class="field-in" id="p-no" name="studentNo" value="${esc(me.studentNo)}" inputmode="numeric" maxlength="10" placeholder="숫자만, 예: 10101" required></div>
+      <div class="f"><label for="p-name">이름 <small>관리자만 볼 수 있어요</small></label><input class="field-in" id="p-name" name="realName" value="${esc(me.name)}" maxlength="20" autocomplete="name" required></div>
       <div class="f"><label for="p-bio">소개</label><textarea class="field-in" id="p-bio" name="bio" maxlength="200" placeholder="어떤 걸 만드는지 한두 줄로">${esc(u.bio)}</textarea></div>
       <p class="form-msg" id="err" role="status"></p>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
@@ -78,7 +80,7 @@ const head = (en, ko) => `<div class="sec-head" style="margin:72px 0 34px"><div>
     $('#pf').onsubmit = async (e) => {
       e.preventDefault();
       const f = e.target;
-      try { const r = await api('/api/me', 'PUT', { nickname: f.nickname.value.trim(), bio: f.bio.value }); $('#err').textContent = ''; toast('저장했어요'); $('.nav-me').textContent = r.nickname; }
+      try { const r = await api('/api/me', 'PUT', { nickname: f.nickname.value.trim(), bio: f.bio.value, studentNo: f.studentNo.value.trim(), name: f.realName.value.trim() }); $('#err').textContent = ''; toast('저장했어요'); $('.nav-me').textContent = r.nickname; }
       catch (err) { $('#err').textContent = '⚠ ' + err.message; }
     };
     $('#out').onclick = async () => { await api('/api/logout', 'POST'); location.href = '/'; };

@@ -9,7 +9,7 @@
 
 import { Hono } from 'hono';
 import { needLogin } from '../session.js';
-import { bad, readJson, isAdmin } from '../util.js';
+import { bad, readJson, isAdmin, isAdminEmail, deleteUser } from '../util.js';
 
 const admin = new Hono();
 
@@ -53,6 +53,45 @@ admin.post('/projects/:id/hide', async (c) => {
 // [작성 이유] 이상 없는 작품을 검토한 뒤 신고 목록에서 내리거나, 조치를 마친 뒤 신고 카운트를 초기화하기 위해서예요(숨김 상태 자체는 위 `/hide` API로 따로 조절해요).
 admin.delete('/projects/:id/reports', async (c) => {
   await c.env.DB.prepare('DELETE FROM reports WHERE project_id = ?').bind(c.req.param('id')).run();
+  return c.json({ ok: true });
+});
+
+// [뜻/역할] 관리 화면 맨 위 숫자 카드용 요약이에요: 전체 회원 수, 작품 수, 신고가 걸린 작품 수, 숨긴 작품 수.
+// [문법] 하위 쿼리(`SELECT COUNT(*) ...`) 네 개를 한 줄 SELECT로 묶어 DB에 한 번만 물어봐요.
+// [작성 이유] 숫자 카드 4개를 위해 API를 4번 부르지 않게 하려고요.
+admin.get('/summary', async (c) => {
+  const row = await c.env.DB.prepare(`SELECT
+      (SELECT COUNT(*) FROM users) AS users,
+      (SELECT COUNT(*) FROM projects) AS projects,
+      (SELECT COUNT(DISTINCT project_id) FROM reports) AS reported,
+      (SELECT COUNT(*) FROM projects WHERE hidden = 1) AS hidden`).first();
+  return c.json(row);
+});
+
+// [뜻/역할] 회원 목록이에요. `?q=`가 있으면 학번·이름·닉네임·이메일 중 하나라도 맞는 회원만 보여 줘요. 최신 가입 순, 200명까지예요.
+// [문법] `LIKE ?`에 `%검색어%`를 넣어 부분 일치로 찾고, 작품 수는 하위 쿼리로 세요. DB 열 이름(`student_no`)을 화면용 이름(`studentNo`)으로 바꿔 보내요.
+// [작성 이유] 학번·이름은 공개 프로필에 안 나오는 정보라, 누가 가입했는지 확인하는 일은 관리자 화면에서만 해요.
+admin.get('/users', async (c) => {
+  const q = String(c.req.query('q') || '').trim().slice(0, 40);
+  // % 와 _ 는 LIKE에서 '아무 글자'라는 뜻이라, 글자 그대로 찾도록 앞에 \ 를 붙여요(ESCAPE '\').
+  const like = `%${q.replace(/[\\%_]/g, '\\$&')}%`;
+  const { results } = await c.env.DB.prepare(`
+    SELECT u.id, u.email, u.nickname, u.student_no, u.real_name, u.created_at,
+      (SELECT COUNT(*) FROM projects WHERE user_id = u.id) AS projects
+    FROM users u
+    WHERE ? = '' OR u.student_no LIKE ? ESCAPE '\\' OR u.real_name LIKE ? ESCAPE '\\' OR u.nickname LIKE ? ESCAPE '\\' OR u.email LIKE ? ESCAPE '\\'
+    ORDER BY u.id DESC LIMIT 200`).bind(q, like, like, like, like).all();
+  return c.json(results.map(({ student_no, real_name, ...u }) => ({ ...u, studentNo: student_no, name: real_name, isAdmin: isAdminEmail(c, u.email) })));
+});
+
+// [뜻/역할] 관리자가 회원을 내보내요(강제 탈퇴). 지우는 일은 본인 탈퇴와 같은 `deleteUser`(util.js)가 해요.
+// [문법] 관리자 계정(ADMIN_EMAILS)은 400으로 막고, 없는 회원이면 404를 돌려줘요.
+// [작성 이유] 관리자가 실수로 자기 자신이나 다른 관리자를 지워 관리 화면에 아무도 못 들어오는 일을 막아요.
+admin.delete('/users/:id', async (c) => {
+  const user = await c.env.DB.prepare('SELECT id, email FROM users WHERE id = ?').bind(c.req.param('id')).first();
+  if (!user) return c.json({ error: '없는 회원이에요' }, 404);
+  if (isAdminEmail(c, user.email)) throw bad('관리자 계정은 내보낼 수 없어요');
+  await deleteUser(c, user.id);
   return c.json({ ok: true });
 });
 

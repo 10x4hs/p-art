@@ -223,6 +223,7 @@ a.btn-hot,a.btn-hot:hover{color:var(--bg)}
 /* ── 10. 작품 걸기·고치기(.reg, .form, .drop, .prev), 홍보 키트(.kit, .copy), 프로필(.prof) ── */
 .reg{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr);gap:56px;align-items:start;padding-top:140px}
 .form{display:flex;flex-direction:column;gap:22px}
+.f label small{color:var(--dim);font-size:12.5px;font-weight:400}
 .f label,.f legend{display:flex;align-items:center;gap:10px;font-size:14px;color:var(--mute);margin-bottom:10px}
 .f .field-in{width:100%}
 .f textarea.field-in{min-height:110px;padding:14px 18px;resize:vertical}
@@ -288,6 +289,7 @@ a.btn-hot,a.btn-hot:hover{color:var(--bg)}
 .auth-logo .p{font-weight:300}.auth-logo .art{font-weight:700;letter-spacing:-.075em;color:#F2B33D}
 .auth-page main{position:relative;flex:1;width:100%;max-width:720px;padding:0 20px;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:18px}
 .auth-page form{width:100%}
+.auth-page main,.big-pill{box-sizing:border-box} /* width:100%에 안쪽 여백이 더해져 폰에서 → 버튼이 잘리던 것을 막아요 */
 .big-pill{display:flex;align-items:center;gap:12px;width:100%;min-height:84px;padding:0 14px 0 30px;border-radius:999px;border:1px solid rgba(255,255,255,.45);background:rgba(255,255,255,.12);-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px)}
 .big-pill:focus-within{border-color:rgba(255,255,255,.7)}
 .big-pill input{flex:1;min-width:0;border:0;background:transparent;color:#fff;font:inherit;font-size:22px;outline:none}
@@ -326,6 +328,13 @@ a.btn-hot,a.btn-hot:hover{color:var(--bg)}
 .mates{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:4px 10px}
 .draft{display:flex;align-items:center;gap:10px;flex-wrap:wrap;border-radius:16px;padding:10px 16px;font-size:13.5px;color:var(--mute)}
 .draft button{border:0;background:none;color:var(--accent);padding:4px 6px;font-size:13.5px}
+.adm-bar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;margin:28px 0 18px}
+.adm-bar [hidden],.reps[hidden]{display:none}
+.tbl.adm-tbl :is(th,td){text-align:left;white-space:nowrap}
+.tbl.adm-tbl .num{text-align:right}
+.adm-none{color:var(--dim)}
+.adm-tag{font-size:12px;color:var(--accent);margin-left:4px}
+.adm-kick{min-height:36px;padding:6px 14px;font-size:13px}
 .reps{display:flex;flex-direction:column;gap:14px}
 .rep{border-radius:22px;padding:22px;display:flex;flex-direction:column;gap:12px}
 .rep-t{font-size:20px;font-weight:600;letter-spacing:-.03em;overflow-wrap:anywhere}
